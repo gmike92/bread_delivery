@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="64" fill="#8B4513"/>
+  <defs>
+    <linearGradient id="breadGradient512" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5DEB3"/>
+      <stop offset="50%" style="stop-color:#DEB887"/>
+      <stop offset="100%" style="stop-color:#D2B48C"/>
+    </linearGradient>
+  </defs>
+  <!-- Bread loaf shape -->
+  <ellipse cx="256" cy="295" rx="185" ry="130" fill="url(#breadGradient512)"/>
+  <ellipse cx="256" cy="255" rx="165" ry="95" fill="#FFF8DC"/>
+  <!-- Bread slashes -->
+  <path d="M130 230 Q185 200, 240 230" stroke="#C19A6B" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M195 215 Q250 185, 305 215" stroke="#C19A6B" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <path d="M260 230 Q315 200, 370 230" stroke="#C19A6B" stroke-width="12" fill="none" stroke-linecap="round"/>
+  <!-- Steam lines -->
+  <path d="M160 145 Q145 105, 170 70" stroke="#FFF8DC" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M256 120 Q241 80, 266 45" stroke="#FFF8DC" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.8"/>
+  <path d="M352 145 Q337 105, 362 70" stroke="#FFF8DC" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.8"/>
+</svg>
+
