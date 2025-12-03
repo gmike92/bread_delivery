@@ -8,9 +8,12 @@ import {
   ChevronRight,
   Users,
   Check,
-  X
+  X,
+  CheckCircle2,
+  Circle,
+  Truck
 } from 'lucide-react';
-import { getOrdersByDate, calculateOrdersSummary, updateOrderStatus } from '../firebase/firestore';
+import { getOrdersByDate, calculateOrdersSummary, updateOrderStatus, getDeliveriesByDate, calculateDeliveryProgress } from '../firebase/firestore';
 
 const OrdiniGiorno = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -26,8 +29,15 @@ const OrdiniGiorno = () => {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const ordersData = await getOrdersByDate(selectedDate);
-      setOrders(ordersData);
+      const [ordersData, deliveriesData] = await Promise.all([
+        getOrdersByDate(selectedDate),
+        getDeliveriesByDate(selectedDate)
+      ]);
+      
+      // Calculate progress for each order
+      const ordersWithProgress = calculateDeliveryProgress(ordersData, deliveriesData);
+      
+      setOrders(ordersWithProgress);
       setSummary(calculateOrdersSummary(ordersData));
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -177,10 +187,14 @@ const OrdiniGiorno = () => {
           <h2>👥 Dettaglio per Cliente</h2>
           ${orders.map(order => `
             <div class="customer-section">
-              <div class="customer-name">📦 ${order.customerName}</div>
+              <div class="customer-name">${order.isComplete ? '✅' : '📦'} ${order.customerName}</div>
               <div class="items">
                 ${order.items?.map(item => `
-                  <div class="item">• ${item.product}: <strong>${item.quantity}</strong> ${item.unit}</div>
+                  <div class="item" style="color: ${item.isComplete ? '#16a34a' : item.delivered > 0 ? '#d97706' : '#444'}">
+                    ${item.isComplete ? '✓' : '•'} ${item.product}: 
+                    <strong>${item.delivered || 0}/${item.ordered || item.quantity}</strong> ${item.unit}
+                    ${item.isComplete ? ' ✅' : item.delivered > 0 ? ' ⏳' : ''}
+                  </div>
                 `).join('')}
               </div>
             </div>
@@ -344,24 +358,66 @@ const OrdiniGiorno = () => {
             {orders.map((order, index) => (
               <div 
                 key={order.id} 
-                className="card"
+                className={`card ${order.isComplete ? 'border-2 border-green-300 bg-green-50/50' : ''}`}
                 style={{ animationDelay: `${0.05 * index}s` }}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-bread-800 text-lg">
-                      {order.customerName}
-                    </h3>
-                    <p className="text-sm text-bread-500">{order.customerEmail}</p>
+                  <div className="flex items-center gap-2">
+                    {order.isComplete ? (
+                      <CheckCircle2 size={24} className="text-green-500" />
+                    ) : order.hasPartialDelivery ? (
+                      <Truck size={24} className="text-amber-500" />
+                    ) : (
+                      <Circle size={24} className="text-bread-300" />
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-bread-800 text-lg">
+                        {order.customerName}
+                      </h3>
+                      <p className="text-sm text-bread-500">{order.customerEmail}</p>
+                    </div>
                   </div>
-                  {getStatusBadge(order.status)}
+                  {order.isComplete ? (
+                    <span className="badge bg-green-100 text-green-700">
+                      <Check size={14} className="inline mr-1" />
+                      Completato
+                    </span>
+                  ) : (
+                    getStatusBadge(order.status)
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-4">
+                {/* Items with delivery progress */}
+                <div className="space-y-2 mb-4">
                   {order.items?.map((item, i) => (
-                    <span key={i} className="badge">
-                      {item.product}: {item.quantity} {item.unit}
-                    </span>
+                    <div key={i} className="flex items-center gap-3">
+                      {item.isComplete ? (
+                        <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
+                      ) : (
+                        <Circle size={18} className="text-bread-300 flex-shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-bread-800">{item.product}</span>
+                          <span className={`text-sm font-semibold ${
+                            item.isComplete ? 'text-green-600' : 
+                            item.delivered > 0 ? 'text-amber-600' : 'text-bread-500'
+                          }`}>
+                            {item.delivered}/{item.ordered} {item.unit}
+                          </span>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="mt-1 h-2 bg-bread-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all ${
+                              item.isComplete ? 'bg-green-500' : 
+                              item.delivered > 0 ? 'bg-amber-500' : 'bg-bread-200'
+                            }`}
+                            style={{ width: `${item.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
 
@@ -375,16 +431,16 @@ const OrdiniGiorno = () => {
                       Conferma
                     </button>
                   )}
-                  {order.status === 'confirmed' && (
+                  {order.status === 'confirmed' && !order.isComplete && (
                     <button
                       onClick={() => handleStatusChange(order.id, 'delivered')}
                       className="flex-1 py-2 px-4 bg-bread-100 text-bread-700 rounded-bread font-medium flex items-center justify-center gap-2"
                     >
                       <Package size={18} />
-                      Consegnato
+                      Segna Consegnato
                     </button>
                   )}
-                  {order.status !== 'delivered' && (
+                  {order.status !== 'delivered' && !order.isComplete && (
                     <button
                       onClick={() => handleStatusChange(order.id, 'pending')}
                       className="py-2 px-4 bg-gray-100 text-gray-600 rounded-bread font-medium"

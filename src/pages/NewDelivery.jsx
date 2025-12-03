@@ -9,9 +9,11 @@ import {
   Calendar,
   User,
   Package,
-  Check
+  Check,
+  ShoppingBag,
+  AlertCircle
 } from 'lucide-react';
-import { getCustomers, getProducts, addDelivery, addProduct } from '../firebase/firestore';
+import { getCustomers, getProducts, addDelivery, addProduct, getOrdersByDate, getDeliveriesByDate, calculateDeliveryProgress } from '../firebase/firestore';
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
@@ -31,6 +33,8 @@ const NewDelivery = () => {
 
   const [newProductName, setNewProductName] = useState('');
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [customerOrder, setCustomerOrder] = useState(null);
+  const [loadingOrder, setLoadingOrder] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -49,6 +53,41 @@ const NewDelivery = () => {
     };
     loadData();
   }, []);
+
+  // Load customer's order when customer or date changes
+  useEffect(() => {
+    const loadCustomerOrder = async () => {
+      if (!formData.customerId || !formData.date) {
+        setCustomerOrder(null);
+        return;
+      }
+
+      setLoadingOrder(true);
+      try {
+        const [orders, deliveries] = await Promise.all([
+          getOrdersByDate(formData.date),
+          getDeliveriesByDate(formData.date)
+        ]);
+
+        // Find order for this customer
+        const customerOrders = orders.filter(o => o.customerId === formData.customerId);
+        
+        if (customerOrders.length > 0) {
+          const ordersWithProgress = calculateDeliveryProgress(customerOrders, deliveries);
+          setCustomerOrder(ordersWithProgress[0]);
+        } else {
+          setCustomerOrder(null);
+        }
+      } catch (error) {
+        console.error('Error loading customer order:', error);
+        setCustomerOrder(null);
+      } finally {
+        setLoadingOrder(false);
+      }
+    };
+
+    loadCustomerOrder();
+  }, [formData.customerId, formData.date]);
 
   const addItem = () => {
     setFormData({
@@ -205,6 +244,69 @@ const NewDelivery = () => {
             className="input-field"
           />
         </div>
+
+        {/* Customer Order Info */}
+        {loadingOrder && (
+          <div className="card animate-fade-in border-2 border-bread-200">
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="animate-spin text-bread-500" size={24} />
+              <span className="ml-2 text-bread-600">Caricamento ordine...</span>
+            </div>
+          </div>
+        )}
+
+        {customerOrder && !loadingOrder && (
+          <div className={`card animate-fade-in border-2 ${customerOrder.isComplete ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <ShoppingBag size={20} className={customerOrder.isComplete ? 'text-green-600' : 'text-amber-600'} />
+              <h3 className="font-semibold text-bread-800">
+                Ordine del Cliente
+              </h3>
+              {customerOrder.isComplete && (
+                <span className="badge bg-green-100 text-green-700 text-xs ml-auto">
+                  <Check size={12} className="inline mr-1" />
+                  Completato
+                </span>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              {customerOrder.items?.map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-bread-200 last:border-0">
+                  <span className="text-bread-700">{item.product}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`font-semibold ${
+                      item.isComplete ? 'text-green-600' : 
+                      item.delivered > 0 ? 'text-amber-600' : 'text-bread-800'
+                    }`}>
+                      {item.delivered}/{item.ordered} {item.unit}
+                    </span>
+                    {item.isComplete ? (
+                      <Check size={18} className="text-green-500" />
+                    ) : item.delivered > 0 ? (
+                      <AlertCircle size={18} className="text-amber-500" />
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {!customerOrder.isComplete && (
+              <p className="text-xs text-amber-700 mt-3">
+                💡 Inserisci la quantità consegnata per aggiornare il progresso
+              </p>
+            )}
+          </div>
+        )}
+
+        {formData.customerId && !customerOrder && !loadingOrder && (
+          <div className="card animate-fade-in border-2 border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-2 text-gray-600">
+              <AlertCircle size={20} />
+              <span className="text-sm">Nessun ordine per questo cliente in questa data</span>
+            </div>
+          </div>
+        )}
 
         {/* Products List */}
         <div className="animate-slide-up stagger-3">

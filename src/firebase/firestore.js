@@ -353,6 +353,73 @@ export const calculateOrdersSummary = (orders) => {
   return Object.values(summary).sort((a, b) => a.product.localeCompare(b.product));
 };
 
+// Get deliveries for a specific date (to match against orders)
+export const getDeliveriesByDate = async (date) => {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  const q = query(
+    collection(db, 'deliveries'),
+    where('date', '>=', Timestamp.fromDate(startOfDay)),
+    where('date', '<=', Timestamp.fromDate(endOfDay)),
+    orderBy('date', 'asc')
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+// Calculate delivery progress for orders
+export const calculateDeliveryProgress = (orders, deliveries) => {
+  return orders.map(order => {
+    // Find deliveries for this customer
+    const customerDeliveries = deliveries.filter(d => d.customerId === order.customerId);
+    
+    // Calculate delivered quantities per product
+    const deliveredItems = {};
+    customerDeliveries.forEach(delivery => {
+      if (delivery.items && Array.isArray(delivery.items)) {
+        delivery.items.forEach(item => {
+          const key = `${item.product}_${item.unit}`;
+          if (!deliveredItems[key]) {
+            deliveredItems[key] = 0;
+          }
+          deliveredItems[key] += parseFloat(item.quantity) || 0;
+        });
+      }
+    });
+    
+    // Add progress to each order item
+    const itemsWithProgress = order.items?.map(item => {
+      const key = `${item.product}_${item.unit}`;
+      const delivered = deliveredItems[key] || 0;
+      const ordered = parseFloat(item.quantity) || 0;
+      return {
+        ...item,
+        delivered,
+        ordered,
+        isComplete: delivered >= ordered,
+        progress: ordered > 0 ? Math.min((delivered / ordered) * 100, 100) : 0
+      };
+    }) || [];
+    
+    // Check if entire order is complete
+    const isOrderComplete = itemsWithProgress.every(item => item.isComplete);
+    
+    return {
+      ...order,
+      items: itemsWithProgress,
+      isComplete: isOrderComplete,
+      hasPartialDelivery: itemsWithProgress.some(item => item.delivered > 0)
+    };
+  });
+};
+
 // ============ SEED DEFAULT PRODUCTS ============
 
 export const seedDefaultProducts = async () => {
