@@ -43,6 +43,32 @@ export const addCustomer = async (customerData) => {
   return docRef.id;
 };
 
+export const getCustomerByEmail = async (email) => {
+  const q = query(
+    collection(db, 'customers'),
+    where('email', '==', email)
+  );
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
+  }
+  return null;
+};
+
+export const getCustomerByUserId = async (userId) => {
+  const q = query(
+    collection(db, 'customers'),
+    where('userId', '==', userId)
+  );
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() };
+  }
+  return null;
+};
+
 export const updateCustomer = async (id, customerData) => {
   const docRef = doc(db, 'customers', id);
   await updateDoc(docRef, {
@@ -231,10 +257,34 @@ export const createUserProfile = async (userId, email, role = 'cliente', name = 
   const docSnap = await getDoc(userRef);
   
   if (!docSnap.exists()) {
+    const userName = name || email.split('@')[0];
+    let customerId = null;
+    
+    // For 'cliente' users, create a linked customer record
+    if (role === 'cliente') {
+      // Check if customer with this email already exists
+      const existingCustomer = await getCustomerByEmail(email);
+      if (existingCustomer) {
+        customerId = existingCustomer.id;
+        // Link the existing customer to this user
+        await updateCustomer(customerId, { userId, linkedAt: Timestamp.now() });
+      } else {
+        // Create new customer record
+        customerId = await addCustomer({
+          name: userName,
+          email,
+          phone: '',
+          address: '',
+          userId // Link back to user
+        });
+      }
+    }
+    
     await setDoc(userRef, {
       email,
       role,
-      name: name || email.split('@')[0],
+      name: userName,
+      customerId, // Link to customer record (null for autisti)
       createdAt: Timestamp.now()
     });
   }
