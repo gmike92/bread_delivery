@@ -208,6 +208,23 @@ const ClienteOrdine = () => {
 
       {activeTab === 'nuovo' ? (
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* No Products Warning */}
+          {products.length === 0 && (
+            <div className="card bg-amber-50 border-2 border-amber-200 animate-slide-up">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Package size={24} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-amber-800">Nessun prodotto disponibile</h3>
+                  <p className="text-sm text-amber-600">
+                    Contatta l'amministratore per aggiungere i prodotti
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Date Selection */}
           <div className="card animate-slide-up stagger-2">
             <label className="label">
