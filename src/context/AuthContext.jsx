@@ -25,7 +25,8 @@ export const AuthProvider = ({ children }) => {
 
   // Ensure customer record exists for cliente users
   const ensureCustomerRecord = async (firebaseUser, profile) => {
-    if (profile?.role !== 'cliente') return null;
+    // Only create customer records for 'cliente' role
+    // But always try to link existing customers by email for any role
     
     try {
       // Try to find customer by userId first
@@ -38,8 +39,8 @@ export const AuthProvider = ({ children }) => {
         if (customer) {
           // Link existing customer to this user
           await updateCustomer(customer.id, { userId: firebaseUser.uid });
-        } else {
-          // Create new customer record
+        } else if (profile?.role === 'cliente') {
+          // Only create new customer record for 'cliente' role
           const customerName = profile?.name || firebaseUser.email.split('@')[0];
           const customerId = await addCustomer({
             name: customerName,
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }) => {
             userId: firebaseUser.uid
           });
           customer = { id: customerId, name: customerName, email: firebaseUser.email };
+          console.log('Created new customer record:', customer);
         }
       }
       

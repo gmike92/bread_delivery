@@ -24,7 +24,10 @@ import {
   deleteProduct,
   seedDefaultProducts,
   getAllUsers,
-  setUserRole
+  setUserRole,
+  getCustomerByEmail,
+  addCustomer,
+  updateCustomer
 } from '../firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -101,6 +104,25 @@ const Settings = () => {
         userForm.name
       );
 
+      // If role is 'cliente', create customer record
+      if (userForm.role === 'cliente') {
+        let existingCustomer = await getCustomerByEmail(userForm.email);
+        
+        if (!existingCustomer) {
+          await addCustomer({
+            name: userForm.name,
+            email: userForm.email,
+            phone: '',
+            address: '',
+            userId: userCredential.user.uid
+          });
+          console.log('Created customer for new user:', userForm.email);
+        } else {
+          // Link existing customer
+          await updateCustomer(existingCustomer.id, { userId: userCredential.user.uid });
+        }
+      }
+
       // Reload users
       const usersData = await getAllUsers();
       setUsers(usersData);
@@ -124,7 +146,32 @@ const Settings = () => {
 
   const handleChangeRole = async (userId, newRole) => {
     try {
+      // Get user info before changing role
+      const userToUpdate = users.find(u => u.id === userId);
+      
       await setUserRole(userId, newRole);
+      
+      // If changing to 'cliente', ensure customer record exists
+      if (newRole === 'cliente' && userToUpdate) {
+        let customer = await getCustomerByEmail(userToUpdate.email);
+        
+        if (!customer) {
+          // Create new customer record
+          await addCustomer({
+            name: userToUpdate.name || userToUpdate.email.split('@')[0],
+            email: userToUpdate.email,
+            phone: '',
+            address: '',
+            userId: userId
+          });
+          console.log('Created customer for:', userToUpdate.email);
+        } else if (!customer.userId) {
+          // Link existing customer to this user
+          await updateCustomer(customer.id, { userId: userId });
+          console.log('Linked customer:', userToUpdate.email);
+        }
+      }
+      
       const usersData = await getAllUsers();
       setUsers(usersData);
     } catch (error) {
