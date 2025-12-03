@@ -5,7 +5,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { getUserProfile, createUserProfile } from '../firebase/firestore';
+import { getUserProfile, createUserProfile, getCustomerByUserId, getCustomerByEmail, addCustomer, updateCustomer } from '../firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -20,7 +20,44 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [linkedCustomer, setLinkedCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Ensure customer record exists for cliente users
+  const ensureCustomerRecord = async (firebaseUser, profile) => {
+    if (profile?.role !== 'cliente') return null;
+    
+    try {
+      // Try to find customer by userId first
+      let customer = await getCustomerByUserId(firebaseUser.uid);
+      
+      if (!customer) {
+        // Try by email
+        customer = await getCustomerByEmail(firebaseUser.email);
+        
+        if (customer) {
+          // Link existing customer to this user
+          await updateCustomer(customer.id, { userId: firebaseUser.uid });
+        } else {
+          // Create new customer record
+          const customerName = profile?.name || firebaseUser.email.split('@')[0];
+          const customerId = await addCustomer({
+            name: customerName,
+            email: firebaseUser.email,
+            phone: '',
+            address: '',
+            userId: firebaseUser.uid
+          });
+          customer = { id: customerId, name: customerName, email: firebaseUser.email };
+        }
+      }
+      
+      return customer;
+    } catch (error) {
+      console.error('Error ensuring customer record:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -34,9 +71,14 @@ export const AuthProvider = ({ children }) => {
           profile = await getUserProfile(firebaseUser.uid);
         }
         setUserProfile(profile);
+        
+        // Ensure customer record exists for cliente users
+        const customer = await ensureCustomerRecord(firebaseUser, profile);
+        setLinkedCustomer(customer);
       } else {
         setUser(null);
         setUserProfile(null);
+        setLinkedCustomer(null);
       }
       setLoading(false);
     });
@@ -54,6 +96,11 @@ export const AuthProvider = ({ children }) => {
         profile = await getUserProfile(result.user.uid);
       }
       setUserProfile(profile);
+      
+      // Ensure customer record exists for cliente users
+      const customer = await ensureCustomerRecord(result.user, profile);
+      setLinkedCustomer(customer);
+      
       return { success: true, user: result.user, role: profile?.role || 'autista' };
     } catch (error) {
       let message = 'Accesso fallito. Riprova.';
@@ -86,6 +133,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     userProfile,
+    linkedCustomer,
     loading,
     login,
     logout,

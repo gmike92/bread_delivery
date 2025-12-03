@@ -11,19 +11,18 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, addOrder, getOrdersByCustomer, seedDefaultProducts, getCustomerByUserId, getCustomerByEmail, addCustomer, updateCustomer } from '../firebase/firestore';
+import { getProducts, addOrder, getOrdersByCustomer, seedDefaultProducts } from '../firebase/firestore';
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
 const ClienteOrdine = () => {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, linkedCustomer } = useAuth();
   const [products, setProducts] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('nuovo'); // 'nuovo' or 'storico'
-  const [linkedCustomer, setLinkedCustomer] = useState(null);
 
   // Get tomorrow's date as default
   const getTomorrow = () => {
@@ -39,7 +38,7 @@ const ClienteOrdine = () => {
 
   useEffect(() => {
     loadData();
-  }, [user]);
+  }, [linkedCustomer]);
 
   const loadData = async () => {
     // Load products first (always needed)
@@ -56,45 +55,10 @@ const ClienteOrdine = () => {
       console.error('Error loading products:', error);
     }
 
-    // Get or create linked customer for this user
-    let customer = null;
-    if (user) {
-      try {
-        // First try to find customer by userId
-        customer = await getCustomerByUserId(user.uid);
-        
-        if (!customer) {
-          // Try by email
-          customer = await getCustomerByEmail(user.email);
-          
-          if (customer) {
-            // Link existing customer to this user
-            await updateCustomer(customer.id, { userId: user.uid });
-          } else {
-            // Create new customer record
-            const customerName = userProfile?.name || user.email.split('@')[0];
-            const customerId = await addCustomer({
-              name: customerName,
-              email: user.email,
-              phone: '',
-              address: '',
-              userId: user.uid
-            });
-            customer = { id: customerId, name: customerName };
-          }
-        }
-        
-        console.log('Linked customer:', customer);
-        setLinkedCustomer(customer);
-      } catch (error) {
-        console.error('Error linking customer:', error);
-      }
-    }
-
-    // Load orders separately (may fail without index, but shouldn't block products)
+    // Load orders using linkedCustomer from context
     try {
-      if (customer?.id) {
-        const ordersData = await getOrdersByCustomer(customer.id);
+      if (linkedCustomer?.id) {
+        const ordersData = await getOrdersByCustomer(linkedCustomer.id);
         setMyOrders(ordersData);
       }
     } catch (error) {
