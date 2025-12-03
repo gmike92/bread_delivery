@@ -11,7 +11,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, addOrder, getOrdersByCustomer } from '../firebase/firestore';
+import { getProducts, addOrder, getOrdersByCustomer, seedDefaultProducts } from '../firebase/firestore';
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
@@ -42,10 +42,15 @@ const ClienteOrdine = () => {
 
   const loadData = async () => {
     try {
-      const [productsData, ordersData] = await Promise.all([
-        getProducts(),
-        user ? getOrdersByCustomer(user.uid) : []
-      ]);
+      let productsData = await getProducts();
+      
+      // If no products, seed default ones
+      if (productsData.length === 0) {
+        productsData = await seedDefaultProducts(true);
+      }
+      
+      const ordersData = user ? await getOrdersByCustomer(user.uid) : [];
+      
       setProducts(productsData);
       setMyOrders(ordersData);
     } catch (error) {

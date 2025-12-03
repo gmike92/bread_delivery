@@ -422,25 +422,29 @@ export const calculateDeliveryProgress = (orders, deliveries) => {
 
 // ============ SEED DEFAULT PRODUCTS ============
 
-export const seedDefaultProducts = async () => {
+export const seedDefaultProducts = async (forceAdd = false) => {
   const defaultProducts = [
-    { name: 'Pane Bianco', defaultUnit: 'kg' },
-    { name: 'Pane Integrale', defaultUnit: 'kg' },
+    { name: 'Pane Comune', defaultUnit: 'kg' },
+    { name: 'Pane Speciale', defaultUnit: 'kg' },
     { name: 'Pane di Segale', defaultUnit: 'kg' },
-    { name: 'Baguette', defaultUnit: 'pezzi' },
-    { name: 'Ciabatta', defaultUnit: 'pezzi' },
-    { name: 'Brioche', defaultUnit: 'pezzi' },
-    { name: 'Impasto Pizza', defaultUnit: 'kg' },
-    { name: 'Focaccia', defaultUnit: 'pezzi' },
-    { name: 'Cornetti', defaultUnit: 'pezzi' },
-    { name: 'Panini', defaultUnit: 'pezzi' }
+    { name: 'Segalini', defaultUnit: 'kg' },
+    { name: 'Focaccia', defaultUnit: 'kg' },
+    { name: 'Pizza', defaultUnit: 'kg' }
   ];
   
   const existingProducts = await getProducts();
-  if (existingProducts.length === 0) {
+  
+  if (forceAdd || existingProducts.length === 0) {
+    // Get existing product names to avoid duplicates
+    const existingNames = existingProducts.map(p => p.name.toLowerCase());
+    
     for (const product of defaultProducts) {
-      await addProduct(product);
+      if (!existingNames.includes(product.name.toLowerCase())) {
+        await addProduct(product);
+      }
     }
   }
+  
+  return await getProducts();
 };
 

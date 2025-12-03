@@ -13,7 +13,7 @@ import {
   ShoppingBag,
   AlertCircle
 } from 'lucide-react';
-import { getCustomers, getProducts, addDelivery, addProduct, getOrdersByDate, getDeliveriesByDate, calculateDeliveryProgress } from '../firebase/firestore';
+import { getCustomers, getProducts, addDelivery, addProduct, getOrdersByDate, getDeliveriesByDate, calculateDeliveryProgress, seedDefaultProducts } from '../firebase/firestore';
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
@@ -43,8 +43,15 @@ const NewDelivery = () => {
           getCustomers(),
           getProducts()
         ]);
+        
+        // If no products, seed default ones
+        let finalProducts = productsData;
+        if (productsData.length === 0) {
+          finalProducts = await seedDefaultProducts(true);
+        }
+        
         setCustomers(customersData);
-        setProducts(productsData);
+        setProducts(finalProducts);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
