@@ -278,29 +278,61 @@ const NewDelivery = () => {
             </div>
             
             <div className="space-y-2">
-              {customerOrder.items?.map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-bread-200 last:border-0">
-                  <span className="text-bread-700">{item.product}</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`font-semibold ${
-                      item.isComplete ? 'text-green-600' : 
-                      item.delivered > 0 ? 'text-amber-600' : 'text-bread-800'
-                    }`}>
-                      {item.delivered}/{item.ordered} {item.unit}
-                    </span>
-                    {item.isComplete ? (
-                      <Check size={18} className="text-green-500" />
-                    ) : item.delivered > 0 ? (
-                      <AlertCircle size={18} className="text-amber-500" />
-                    ) : null}
+              {customerOrder.items?.map((item, i) => {
+                const remaining = item.ordered - item.delivered;
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-bread-200 last:border-0">
+                    <div className="flex-1">
+                      <span className="text-bread-700 font-medium">{item.product}</span>
+                      <div className={`text-sm ${
+                        item.isComplete ? 'text-green-600' : 
+                        item.delivered > 0 ? 'text-amber-600' : 'text-bread-500'
+                      }`}>
+                        {item.delivered}/{item.ordered} {item.unit}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.isComplete ? (
+                        <span className="badge bg-green-100 text-green-700 text-xs">
+                          <Check size={12} className="inline" /> OK
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Pre-fill with remaining quantity
+                            const newItem = { 
+                              product: item.product, 
+                              quantity: remaining.toString(), 
+                              unit: item.unit 
+                            };
+                            // Check if product already in form
+                            const existingIndex = formData.items.findIndex(
+                              fi => fi.product === item.product && !fi.quantity
+                            );
+                            if (existingIndex >= 0) {
+                              updateItem(existingIndex, 'quantity', remaining.toString());
+                            } else {
+                              setFormData({
+                                ...formData,
+                                items: [...formData.items.filter(fi => fi.product || fi.quantity), newItem]
+                              });
+                            }
+                          }}
+                          className="px-3 py-1 bg-bread-600 text-white rounded-bread text-sm font-medium hover:bg-bread-700 transition-colors"
+                        >
+                          +{remaining} {item.unit}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {!customerOrder.isComplete && (
               <p className="text-xs text-amber-700 mt-3">
-                💡 Inserisci la quantità consegnata per aggiornare il progresso
+                💡 Tocca i pulsanti per aggiungere rapidamente le quantità mancanti
               </p>
             )}
           </div>
@@ -317,10 +349,10 @@ const NewDelivery = () => {
 
         {/* Products List */}
         <div className="animate-slide-up stagger-3">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <label className="label mb-0">
               <Package className="inline mr-2" size={18} />
-              Prodotti *
+              Prodotti da Consegnare *
             </label>
             <button
               type="button"
@@ -331,6 +363,9 @@ const NewDelivery = () => {
               Nuovo Prodotto
             </button>
           </div>
+          <p className="text-xs text-bread-500 mb-4">
+            Puoi aggiungere sia prodotti ordinati che prodotti extra
+          </p>
 
           {/* Add Product Modal */}
           {showAddProduct && (
@@ -368,10 +403,33 @@ const NewDelivery = () => {
 
           {/* Product Items */}
           <div className="space-y-4">
-            {formData.items.map((item, index) => (
-              <div key={index} className="card">
+            {formData.items.map((item, index) => {
+              // Check if this product is in the customer's order
+              const isOrderedItem = customerOrder?.items?.some(
+                oi => oi.product === item.product
+              );
+              const orderedItem = customerOrder?.items?.find(
+                oi => oi.product === item.product
+              );
+              
+              return (
+              <div key={index} className={`card ${isOrderedItem ? 'border-l-4 border-l-bread-500' : ''}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="badge">Articolo {index + 1}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="badge">Articolo {index + 1}</span>
+                    {isOrderedItem && (
+                      <span className="badge bg-bread-100 text-bread-700 text-xs">
+                        <ShoppingBag size={12} className="inline mr-1" />
+                        Ordinato
+                      </span>
+                    )}
+                    {item.product && !isOrderedItem && customerOrder && (
+                      <span className="badge bg-blue-100 text-blue-700 text-xs">
+                        <Plus size={12} className="inline mr-1" />
+                        Extra
+                      </span>
+                    )}
+                  </div>
                   {formData.items.length > 1 && (
                     <button
                       type="button"
@@ -382,6 +440,20 @@ const NewDelivery = () => {
                     </button>
                   )}
                 </div>
+                
+                {/* Show order info if this is an ordered item */}
+                {isOrderedItem && orderedItem && (
+                  <div className="mb-3 p-2 bg-bread-50 rounded-bread text-sm">
+                    <span className="text-bread-600">Ordinato: </span>
+                    <span className="font-semibold text-bread-800">
+                      {orderedItem.ordered} {orderedItem.unit}
+                    </span>
+                    <span className="text-bread-500"> • Già consegnato: </span>
+                    <span className="font-semibold text-bread-800">
+                      {orderedItem.delivered} {orderedItem.unit}
+                    </span>
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <div>
@@ -428,7 +500,8 @@ const NewDelivery = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
 
           {/* Add Item Button */}
