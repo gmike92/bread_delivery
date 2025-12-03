@@ -10,7 +10,7 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'apple-touch-icon.svg'],
       manifest: {
         name: 'Bread Delivery Manager',
-        short_name: 'BreadDelivery',
+        short_name: 'Bread Delivery',
         description: 'Mobile-first bread delivery management app for bakeries',
         theme_color: '#8B4513',
         background_color: '#FFF8DC',
@@ -18,6 +18,8 @@ export default defineConfig({
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        id: '/',
+        categories: ['business', 'productivity'],
         icons: [
           {
             src: 'pwa-192x192.svg',
@@ -48,6 +50,28 @@ export default defineConfig({
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'gstatic-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
               }
             }
           }

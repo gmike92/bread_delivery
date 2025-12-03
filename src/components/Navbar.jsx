@@ -11,7 +11,10 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-bread-200 shadow-lg safe-area-bottom">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-bread-200 shadow-lg"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
       <div className="flex items-center justify-around h-20 max-w-lg mx-auto px-2">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink

@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import InstallPrompt from './components/InstallPrompt';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
@@ -13,6 +14,9 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        {/* iOS/Android Install Prompt */}
+        <InstallPrompt />
+        
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
