@@ -12,20 +12,29 @@ import {
   Loader2,
   User,
   Download,
-  RefreshCw
+  RefreshCw,
+  Users,
+  UserPlus,
+  Shield
 } from 'lucide-react';
 import { 
   getProducts, 
   addProduct, 
   updateProduct, 
   deleteProduct,
-  seedDefaultProducts 
+  seedDefaultProducts,
+  getAllUsers,
+  setUserRole
 } from '../firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase/config';
+import { createUserProfile } from '../firebase/firestore';
 
 const Settings = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAutista, userProfile } = useAuth();
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   
@@ -34,11 +43,31 @@ const Settings = () => {
   const [productForm, setProductForm] = useState({ name: '', defaultUnit: 'kg' });
   const [saving, setSaving] = useState(false);
 
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [userForm, setUserForm] = useState({ email: '', password: '', name: '', role: 'cliente' });
+  const [savingUser, setSavingUser] = useState(false);
+
   const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [productsData, usersData] = await Promise.all([
+        getProducts(),
+        isAutista ? getAllUsers() : []
+      ]);
+      setProducts(productsData);
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadProducts = async () => {
     try {
@@ -46,8 +75,60 @@ const Settings = () => {
       setProducts(data);
     } catch (error) {
       console.error('Error loading products:', error);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!userForm.email || !userForm.password || !userForm.name) {
+      alert('Compila tutti i campi');
+      return;
+    }
+
+    setSavingUser(true);
+    try {
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        userForm.email, 
+        userForm.password
+      );
+      
+      // Create user profile in Firestore
+      await createUserProfile(
+        userCredential.user.uid,
+        userForm.email,
+        userForm.role,
+        userForm.name
+      );
+
+      // Reload users
+      const usersData = await getAllUsers();
+      setUsers(usersData);
+      
+      setShowUserForm(false);
+      setUserForm({ email: '', password: '', name: '', role: 'cliente' });
+      alert('Utente creato con successo!');
+    } catch (error) {
+      console.error('Error creating user:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        alert('Email già in uso');
+      } else if (error.code === 'auth/weak-password') {
+        alert('Password troppo debole (minimo 6 caratteri)');
+      } else {
+        alert('Errore nella creazione utente');
+      }
     } finally {
-      setLoading(false);
+      setSavingUser(false);
+    }
+  };
+
+  const handleChangeRole = async (userId, newRole) => {
+    try {
+      await setUserRole(userId, newRole);
+      const usersData = await getAllUsers();
+      setUsers(usersData);
+    } catch (error) {
+      console.error('Error changing role:', error);
     }
   };
 
@@ -297,9 +378,146 @@ const Settings = () => {
         )}
       </div>
 
+      {/* User Management - Only for Autista */}
+      {isAutista && (
+        <div className="mt-8 animate-slide-up stagger-3">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-display font-semibold text-bread-700 flex items-center gap-2">
+              <Users size={20} />
+              Gestione Utenti
+            </h2>
+            <button
+              onClick={() => setShowUserForm(true)}
+              className="btn-icon bg-bread-600 text-white !min-w-[2.5rem] !min-h-[2.5rem]"
+            >
+              <UserPlus size={20} />
+            </button>
+          </div>
+
+          {/* Add User Form */}
+          {showUserForm && (
+            <div className="card mb-4 border-2 border-bread-400 animate-fade-in">
+              <h3 className="font-semibold text-bread-800 mb-4">
+                Nuovo Utente
+              </h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="label">Nome</label>
+                  <input
+                    type="text"
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
+                    placeholder="Nome completo"
+                    className="input-field"
+                  />
+                </div>
+                
+                <div>
+                  <label className="label">Email</label>
+                  <input
+                    type="email"
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                    placeholder="email@esempio.com"
+                    className="input-field"
+                  />
+                </div>
+                
+                <div>
+                  <label className="label">Password</label>
+                  <input
+                    type="password"
+                    value={userForm.password}
+                    onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                    placeholder="Minimo 6 caratteri"
+                    className="input-field"
+                  />
+                </div>
+                
+                <div>
+                  <label className="label">Ruolo</label>
+                  <select
+                    value={userForm.role}
+                    onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
+                    className="select-field"
+                  >
+                    <option value="cliente">Cliente</option>
+                    <option value="autista">Autista/Admin</option>
+                  </select>
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleCreateUser}
+                    className="btn-primary flex-1"
+                    disabled={savingUser}
+                  >
+                    {savingUser ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <UserPlus size={20} />
+                    )}
+                    Crea Utente
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUserForm(false);
+                      setUserForm({ email: '', password: '', name: '', role: 'cliente' });
+                    }}
+                    className="btn-secondary flex-1"
+                  >
+                    <X size={20} />
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Users List */}
+          {users.length === 0 ? (
+            <div className="card text-center py-6">
+              <Users size={32} className="mx-auto text-bread-300 mb-2" />
+              <p className="text-bread-500 text-sm">Nessun utente registrato</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((u) => (
+                <div
+                  key={u.id}
+                  className="card !p-4 flex items-center justify-between"
+                >
+                  <div className="flex-1">
+                    <span className="font-medium text-bread-800">{u.name || u.email}</span>
+                    <p className="text-xs text-bread-500">{u.email}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`badge text-xs ${
+                      u.role === 'autista' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      <Shield size={12} className="inline mr-1" />
+                      {u.role === 'autista' ? 'Autista' : 'Cliente'}
+                    </span>
+                    <select
+                      value={u.role || 'cliente'}
+                      onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                      className="text-xs border border-bread-200 rounded px-2 py-1"
+                    >
+                      <option value="cliente">Cliente</option>
+                      <option value="autista">Autista</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* App Info */}
-      <div className="mt-8 text-center text-bread-400 text-sm animate-slide-up stagger-3">
-        <p>Gestione Consegne Pane v1.0.0</p>
+      <div className="mt-8 text-center text-bread-400 text-sm animate-slide-up stagger-4">
+        <p>Gestione Consegne Pane v1.2.0</p>
         <p className="mt-1">Fatto con 🍞 per i panifici</p>
       </div>
     </div>

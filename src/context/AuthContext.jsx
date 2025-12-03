@@ -5,6 +5,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
+import { getUserProfile, createUserProfile } from '../firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -18,11 +19,25 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        // Get or create user profile
+        let profile = await getUserProfile(firebaseUser.uid);
+        if (!profile) {
+          // Create default profile as 'autista' for existing users
+          await createUserProfile(firebaseUser.uid, firebaseUser.email, 'autista');
+          profile = await getUserProfile(firebaseUser.uid);
+        }
+        setUserProfile(profile);
+      } else {
+        setUser(null);
+        setUserProfile(null);
+      }
       setLoading(false);
     });
 
@@ -32,7 +47,14 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      return { success: true, user: result.user };
+      // Get user profile
+      let profile = await getUserProfile(result.user.uid);
+      if (!profile) {
+        await createUserProfile(result.user.uid, email, 'autista');
+        profile = await getUserProfile(result.user.uid);
+      }
+      setUserProfile(profile);
+      return { success: true, user: result.user, role: profile?.role || 'autista' };
     } catch (error) {
       let message = 'Accesso fallito. Riprova.';
       if (error.code === 'auth/invalid-email') {
@@ -51,18 +73,26 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
+      setUserProfile(null);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }
   };
 
+  const isCliente = userProfile?.role === 'cliente';
+  const isAutista = userProfile?.role === 'autista';
+
   const value = {
     user,
+    userProfile,
     loading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isCliente,
+    isAutista,
+    role: userProfile?.role || null
   };
 
   return (

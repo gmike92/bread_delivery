@@ -1,9 +1,18 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Truck, BarChart3, Settings } from 'lucide-react';
+import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const navItems = [
+  const { isCliente, isAutista } = useAuth();
+
+  // Navigation items based on role
+  const navItems = isCliente ? [
     { to: '/', icon: Home, label: 'Home' },
+    { to: '/ordine', icon: ShoppingBag, label: 'Ordina' },
+    { to: '/settings', icon: Settings, label: 'Profilo' },
+  ] : [
+    { to: '/', icon: Home, label: 'Home' },
+    { to: '/ordini', icon: Package, label: 'Ordini' },
     { to: '/customers', icon: Users, label: 'Clienti' },
     { to: '/delivery', icon: Truck, label: 'Consegna' },
     { to: '/reports', icon: BarChart3, label: 'Report' },

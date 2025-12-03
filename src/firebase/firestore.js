@@ -6,6 +6,7 @@ import {
   deleteDoc, 
   getDocs, 
   getDoc,
+  setDoc,
   query, 
   where, 
   orderBy,
@@ -189,6 +190,162 @@ export const calculateDeliverySummary = (deliveries) => {
         }
         summary[key].totalQuantity += parseFloat(item.quantity) || 0;
         summary[key].deliveryCount += 1;
+      });
+    }
+  });
+  
+  return Object.values(summary).sort((a, b) => a.product.localeCompare(b.product));
+};
+
+// ============ USERS & ROLES ============
+
+export const getUserRole = async (userId) => {
+  const docRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data().role || 'autista';
+  }
+  return 'autista'; // Default role
+};
+
+export const setUserRole = async (userId, role, userData = {}) => {
+  const docRef = doc(db, 'users', userId);
+  try {
+    await updateDoc(docRef, {
+      role,
+      ...userData,
+      updatedAt: Timestamp.now()
+    });
+  } catch {
+    // If document doesn't exist, create it
+    await setDoc(docRef, {
+      role,
+      ...userData,
+      createdAt: Timestamp.now()
+    });
+  }
+};
+
+export const createUserProfile = async (userId, email, role = 'cliente', name = '') => {
+  const userRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(userRef);
+  
+  if (!docSnap.exists()) {
+    await setDoc(userRef, {
+      email,
+      role,
+      name: name || email.split('@')[0],
+      createdAt: Timestamp.now()
+    });
+  }
+  return getUserRole(userId);
+};
+
+export const getUserProfile = async (userId) => {
+  const docRef = doc(db, 'users', userId);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() };
+  }
+  return null;
+};
+
+export const getAllUsers = async () => {
+  const querySnapshot = await getDocs(
+    query(collection(db, 'users'), orderBy('name'))
+  );
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+// ============ ORDERS (Client Orders) ============
+
+export const getOrders = async () => {
+  const querySnapshot = await getDocs(
+    query(collection(db, 'orders'), orderBy('deliveryDate', 'desc'))
+  );
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const getOrdersByDate = async (date) => {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  const q = query(
+    collection(db, 'orders'),
+    where('deliveryDate', '>=', Timestamp.fromDate(startOfDay)),
+    where('deliveryDate', '<=', Timestamp.fromDate(endOfDay)),
+    orderBy('deliveryDate', 'asc')
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const getOrdersByCustomer = async (customerId) => {
+  const q = query(
+    collection(db, 'orders'),
+    where('customerId', '==', customerId),
+    orderBy('deliveryDate', 'desc')
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const addOrder = async (orderData) => {
+  const docRef = await addDoc(collection(db, 'orders'), {
+    ...orderData,
+    deliveryDate: Timestamp.fromDate(new Date(orderData.deliveryDate)),
+    status: 'pending',
+    createdAt: Timestamp.now()
+  });
+  return docRef.id;
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+  const docRef = doc(db, 'orders', orderId);
+  await updateDoc(docRef, {
+    status,
+    updatedAt: Timestamp.now()
+  });
+};
+
+export const deleteOrder = async (orderId) => {
+  const docRef = doc(db, 'orders', orderId);
+  await deleteDoc(docRef);
+};
+
+export const calculateOrdersSummary = (orders) => {
+  const summary = {};
+  
+  orders.forEach(order => {
+    if (order.items && Array.isArray(order.items)) {
+      order.items.forEach(item => {
+        const key = `${item.product}_${item.unit}`;
+        if (!summary[key]) {
+          summary[key] = {
+            product: item.product,
+            unit: item.unit,
+            totalQuantity: 0,
+            orderCount: 0
+          };
+        }
+        summary[key].totalQuantity += parseFloat(item.quantity) || 0;
+        summary[key].orderCount += 1;
       });
     }
   });

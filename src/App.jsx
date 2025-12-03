@@ -9,6 +9,8 @@ import Customers from './pages/Customers';
 import NewDelivery from './pages/NewDelivery';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import ClienteOrdine from './pages/ClienteOrdine';
+import OrdiniGiorno from './pages/OrdiniGiorno';
 
 function App() {
   return (
@@ -29,11 +31,18 @@ function App() {
               </ProtectedRoute>
             }
           >
+            {/* Common Routes */}
             <Route path="/" element={<Dashboard />} />
+            <Route path="/settings" element={<Settings />} />
+            
+            {/* Driver/Admin Routes */}
             <Route path="/customers" element={<Customers />} />
             <Route path="/delivery" element={<NewDelivery />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/ordini" element={<OrdiniGiorno />} />
+            
+            {/* Client Routes */}
+            <Route path="/ordine" element={<ClienteOrdine />} />
           </Route>
           
           {/* Catch all */}
