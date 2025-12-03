@@ -36,7 +36,7 @@ const Layout = () => {
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium shadow-lg animate-slide-down">
           <WifiOff size={18} />
-          <span>You're offline - changes will sync when connected</span>
+          <span>Sei offline - i dati verranno sincronizzati</span>
         </div>
       )}
 
@@ -44,7 +44,7 @@ const Layout = () => {
       {showOnlineToast && (
         <div className="fixed top-4 left-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-bread flex items-center justify-center gap-2 text-sm font-medium shadow-lg animate-slide-down">
           <Wifi size={18} />
-          <span>Back online - syncing data...</span>
+          <span>Di nuovo online - sincronizzazione...</span>
         </div>
       )}
 

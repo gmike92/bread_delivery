@@ -45,7 +45,7 @@ const Dashboard = () => {
   }, []);
 
   const formatDate = () => {
-    return new Date().toLocaleDateString('en-US', {
+    return new Date().toLocaleDateString('it-IT', {
       weekday: 'long',
       month: 'long',
       day: 'numeric'
@@ -57,7 +57,7 @@ const Dashboard = () => {
       <div className="page-container flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner mx-auto mb-4"></div>
-          <p className="text-bread-600 font-medium">Loading dashboard...</p>
+          <p className="text-bread-600 font-medium">Caricamento...</p>
         </div>
       </div>
     );
@@ -69,7 +69,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-between mb-6 animate-slide-up">
         <div>
           <h1 className="text-2xl font-display font-bold text-bread-800">
-            Good Morning! 🌅
+            Buongiorno! 🌅
           </h1>
           <p className="text-bread-600 mt-1">{formatDate()}</p>
         </div>
@@ -86,34 +86,34 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 gap-4 mb-8 animate-slide-up stagger-1">
         <Link to="/delivery" className="btn-primary">
           <Plus size={24} />
-          <span>New Delivery</span>
+          <span>Nuova Consegna</span>
         </Link>
         <Link to="/customers" className="btn-secondary">
           <Users size={24} />
-          <span>Customers</span>
+          <span>Clienti</span>
         </Link>
       </div>
 
       {/* Today's Stats */}
       <h2 className="text-lg font-display font-semibold text-bread-700 mb-4 animate-slide-up stagger-2">
-        Today's Summary
+        Riepilogo di Oggi
       </h2>
       
       <div className="grid grid-cols-3 gap-3 mb-8 animate-slide-up stagger-2">
         <div className="stat-card">
           <Truck size={28} className="mx-auto mb-2 text-bread-600" />
           <div className="stat-value">{todayStats.deliveryCount}</div>
-          <div className="stat-label">Deliveries</div>
+          <div className="stat-label">Consegne</div>
         </div>
         <div className="stat-card">
           <Package size={28} className="mx-auto mb-2 text-bread-600" />
           <div className="stat-value">{todayStats.totalItems.toFixed(1)}</div>
-          <div className="stat-label">Total Items</div>
+          <div className="stat-label">Totale</div>
         </div>
         <div className="stat-card">
           <Users size={28} className="mx-auto mb-2 text-bread-600" />
           <div className="stat-value">{todayStats.customerCount}</div>
-          <div className="stat-label">Customers</div>
+          <div className="stat-label">Clienti</div>
         </div>
       </div>
 
@@ -122,7 +122,7 @@ const Dashboard = () => {
         <div className="card animate-slide-up stagger-3">
           <h3 className="card-header flex items-center gap-2">
             <BarChart3 size={20} className="text-bread-600" />
-            Today's Products
+            Prodotti di Oggi
           </h3>
           <div className="space-y-3">
             {todayStats.productSummary.map((item, index) => (
@@ -145,14 +145,14 @@ const Dashboard = () => {
         <div className="card text-center py-10 animate-slide-up stagger-3">
           <div className="text-6xl mb-4">🍞</div>
           <h3 className="text-xl font-display font-semibold text-bread-700 mb-2">
-            No deliveries yet today
+            Nessuna consegna oggi
           </h3>
           <p className="text-bread-500 mb-6">
-            Start logging deliveries to see your summary
+            Inizia a registrare le consegne per vedere il riepilogo
           </p>
           <Link to="/delivery" className="btn-primary max-w-xs mx-auto">
             <Plus size={24} />
-            Start First Delivery
+            Prima Consegna
           </Link>
         </div>
       )}
@@ -168,8 +168,8 @@ const Dashboard = () => {
               <BarChart3 size={24} className="text-bread-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-bread-800">Monthly Reports</h3>
-              <p className="text-sm text-bread-500">View delivery summaries</p>
+              <h3 className="font-semibold text-bread-800">Report Mensili</h3>
+              <p className="text-sm text-bread-500">Visualizza i riepiloghi</p>
             </div>
           </div>
           <span className="text-bread-400">→</span>

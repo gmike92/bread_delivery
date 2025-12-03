@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.svg'],
       manifest: {
-        name: 'Bread Delivery Manager',
-        short_name: 'Bread Delivery',
-        description: 'Mobile-first bread delivery management app for bakeries',
+        name: 'Gestione Consegne Pane',
+        short_name: 'Consegne Pane',
+        description: 'App mobile per la gestione delle consegne del pane per panifici',
         theme_color: '#8B4513',
         background_color: '#FFF8DC',
         display: 'standalone',

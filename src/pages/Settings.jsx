@@ -34,7 +34,7 @@ const Settings = () => {
   const [productForm, setProductForm] = useState({ name: '', defaultUnit: 'kg' });
   const [saving, setSaving] = useState(false);
 
-  const UNITS = ['kg', 'pieces', 'boxes', 'loaves', 'dozen'];
+  const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
   useEffect(() => {
     loadProducts();
@@ -98,7 +98,7 @@ const Settings = () => {
   };
 
   const handleDeleteProduct = async (product) => {
-    if (window.confirm(`Delete "${product.name}"?`)) {
+    if (window.confirm(`Eliminare "${product.name}"?`)) {
       try {
         await deleteProduct(product.id);
         await loadProducts();
@@ -109,7 +109,7 @@ const Settings = () => {
   };
 
   const handleSeedProducts = async () => {
-    if (window.confirm('Add default bread products?')) {
+    if (window.confirm('Aggiungere i prodotti predefiniti?')) {
       setLoading(true);
       try {
         await seedDefaultProducts();
@@ -127,7 +127,7 @@ const Settings = () => {
       <div className="page-container flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner mx-auto mb-4"></div>
-          <p className="text-bread-600 font-medium">Loading...</p>
+          <p className="text-bread-600 font-medium">Caricamento...</p>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ const Settings = () => {
 
   return (
     <div className="page-container">
-      <h1 className="page-title animate-slide-up">Settings</h1>
+      <h1 className="page-title animate-slide-up">Impostazioni</h1>
 
       {/* User Info */}
       <div className="card mb-6 animate-slide-up stagger-1">
@@ -144,7 +144,7 @@ const Settings = () => {
             <User size={28} className="text-bread-600" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-bread-800">Logged in as</h3>
+            <h3 className="font-semibold text-bread-800">Connesso come</h3>
             <p className="text-bread-600 text-sm truncate">{user?.email}</p>
           </div>
         </div>
@@ -157,12 +157,12 @@ const Settings = () => {
           {loggingOut ? (
             <>
               <Loader2 className="animate-spin" size={24} />
-              Logging out...
+              Disconnessione...
             </>
           ) : (
             <>
               <LogOut size={24} />
-              Log Out
+              Esci
             </>
           )}
         </button>
@@ -173,14 +173,14 @@ const Settings = () => {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-display font-semibold text-bread-700 flex items-center gap-2">
             <Package size={20} />
-            Products
+            Prodotti
           </h2>
           <div className="flex gap-2">
             {products.length === 0 && (
               <button
                 onClick={handleSeedProducts}
                 className="btn-icon !min-w-[2.5rem] !min-h-[2.5rem]"
-                title="Add default products"
+                title="Aggiungi prodotti predefiniti"
               >
                 <Download size={18} />
               </button>
@@ -198,24 +198,24 @@ const Settings = () => {
         {showProductForm && (
           <div className="card mb-4 border-2 border-bread-400 animate-fade-in">
             <h3 className="font-semibold text-bread-800 mb-4">
-              {editingProduct ? 'Edit Product' : 'Add Product'}
+              {editingProduct ? 'Modifica Prodotto' : 'Aggiungi Prodotto'}
             </h3>
             
             <div className="space-y-3">
               <div>
-                <label className="label">Product Name</label>
+                <label className="label">Nome Prodotto</label>
                 <input
                   type="text"
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="Enter product name"
+                  placeholder="Inserisci nome prodotto"
                   className="input-field"
                   autoFocus
                 />
               </div>
               
               <div>
-                <label className="label">Default Unit</label>
+                <label className="label">Unità Predefinita</label>
                 <select
                   value={productForm.defaultUnit}
                   onChange={(e) => setProductForm({ ...productForm, defaultUnit: e.target.value })}
@@ -238,14 +238,14 @@ const Settings = () => {
                   ) : (
                     <Save size={20} />
                   )}
-                  Save
+                  Salva
                 </button>
                 <button
                   onClick={closeProductForm}
                   className="btn-secondary flex-1"
                 >
                   <X size={20} />
-                  Cancel
+                  Annulla
                 </button>
               </div>
             </div>
@@ -256,13 +256,13 @@ const Settings = () => {
         {products.length === 0 ? (
           <div className="card text-center py-8">
             <Package size={48} className="mx-auto text-bread-300 mb-3" />
-            <p className="text-bread-500">No products yet</p>
+            <p className="text-bread-500">Nessun prodotto</p>
             <button
               onClick={handleSeedProducts}
               className="btn-secondary mt-4 max-w-xs mx-auto"
             >
               <RefreshCw size={20} />
-              Load Default Products
+              Carica Prodotti Predefiniti
             </button>
           </div>
         ) : (
@@ -299,8 +299,8 @@ const Settings = () => {
 
       {/* App Info */}
       <div className="mt-8 text-center text-bread-400 text-sm animate-slide-up stagger-3">
-        <p>Bread Delivery Manager v1.0.0</p>
-        <p className="mt-1">Made with 🍞 for bakeries</p>
+        <p>Gestione Consegne Pane v1.0.0</p>
+        <p className="mt-1">Fatto con 🍞 per i panifici</p>
       </div>
     </div>
   );

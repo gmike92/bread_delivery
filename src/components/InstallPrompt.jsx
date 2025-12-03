@@ -86,8 +86,8 @@ const InstallPrompt = () => {
           <div className="w-20 h-20 mx-auto mb-4 bg-white rounded-2xl shadow-lg flex items-center justify-center">
             <span className="text-4xl">🍞</span>
           </div>
-          <h2 className="text-xl font-display font-bold">Install Bread Delivery</h2>
-          <p className="text-bread-100 mt-1 text-sm">Add to your home screen for quick access</p>
+          <h2 className="text-xl font-display font-bold">Installa Consegne Pane</h2>
+          <p className="text-bread-100 mt-1 text-sm">Aggiungi alla schermata home per un accesso rapido</p>
         </div>
 
         {/* Instructions */}
@@ -95,7 +95,7 @@ const InstallPrompt = () => {
           {isIOS ? (
             <>
               <p className="text-bread-700 font-medium mb-4 text-center">
-                Install this app on your iPhone:
+                Installa l'app sul tuo iPhone:
               </p>
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-3 bg-bread-50 rounded-xl">
@@ -103,8 +103,8 @@ const InstallPrompt = () => {
                     <Share size={20} className="text-bread-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-bread-800">1. Tap the Share button</p>
-                    <p className="text-sm text-bread-500">At the bottom of Safari</p>
+                    <p className="font-semibold text-bread-800">1. Tocca il pulsante Condividi</p>
+                    <p className="text-sm text-bread-500">In basso su Safari</p>
                   </div>
                 </div>
                 
@@ -113,18 +113,18 @@ const InstallPrompt = () => {
                     <PlusSquare size={20} className="text-bread-600" />
                   </div>
                   <div>
-                    <p className="font-semibold text-bread-800">2. Tap "Add to Home Screen"</p>
-                    <p className="text-sm text-bread-500">Scroll down in the menu</p>
+                    <p className="font-semibold text-bread-800">2. Tocca "Aggiungi a Home"</p>
+                    <p className="text-sm text-bread-500">Scorri nel menu</p>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-4 p-3 bg-bread-50 rounded-xl">
                   <div className="w-10 h-10 bg-bread-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-bread-600 font-bold">Add</span>
+                    <span className="text-bread-600 font-bold">+</span>
                   </div>
                   <div>
-                    <p className="font-semibold text-bread-800">3. Tap "Add"</p>
-                    <p className="text-sm text-bread-500">In the top right corner</p>
+                    <p className="font-semibold text-bread-800">3. Tocca "Aggiungi"</p>
+                    <p className="text-sm text-bread-500">In alto a destra</p>
                   </div>
                 </div>
               </div>
@@ -132,7 +132,7 @@ const InstallPrompt = () => {
           ) : isAndroid ? (
             <>
               <p className="text-bread-700 font-medium mb-4 text-center">
-                Install this app on your Android:
+                Installa l'app sul tuo Android:
               </p>
               
               {deferredPrompt ? (
@@ -141,7 +141,7 @@ const InstallPrompt = () => {
                   className="w-full min-h-[3.5rem] px-6 py-4 bg-bread-600 text-white font-semibold text-lg rounded-xl shadow-bread flex items-center justify-center gap-3 active:scale-[0.98] transition-transform"
                 >
                   <Download size={24} />
-                  Install App
+                  Installa App
                 </button>
               ) : (
                 <div className="space-y-4">
@@ -150,8 +150,8 @@ const InstallPrompt = () => {
                       <MoreVertical size={20} className="text-bread-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-bread-800">1. Tap the menu</p>
-                      <p className="text-sm text-bread-500">Three dots in Chrome</p>
+                      <p className="font-semibold text-bread-800">1. Tocca il menu</p>
+                      <p className="text-sm text-bread-500">I tre puntini in Chrome</p>
                     </div>
                   </div>
                   
@@ -160,8 +160,8 @@ const InstallPrompt = () => {
                       <PlusSquare size={20} className="text-bread-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-bread-800">2. Tap "Add to Home Screen"</p>
-                      <p className="text-sm text-bread-500">Or "Install App"</p>
+                      <p className="font-semibold text-bread-800">2. Tocca "Aggiungi a Home"</p>
+                      <p className="text-sm text-bread-500">O "Installa App"</p>
                     </div>
                   </div>
                 </div>
@@ -176,7 +176,7 @@ const InstallPrompt = () => {
             onClick={handleDismiss}
             className="w-full py-3 text-bread-500 font-medium text-sm hover:text-bread-700 transition-colors"
           >
-            Maybe later
+            Forse più tardi
           </button>
         </div>
       </div>

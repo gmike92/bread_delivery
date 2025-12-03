@@ -107,7 +107,7 @@ const Customers = () => {
       <div className="page-container flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner mx-auto mb-4"></div>
-          <p className="text-bread-600 font-medium">Loading customers...</p>
+          <p className="text-bread-600 font-medium">Caricamento clienti...</p>
         </div>
       </div>
     );
@@ -122,7 +122,7 @@ const Customers = () => {
             <ChevronLeft size={24} />
           </button>
           <h1 className="page-title mb-0">
-            {editingCustomer ? 'Edit Customer' : 'New Customer'}
+            {editingCustomer ? 'Modifica Cliente' : 'Nuovo Cliente'}
           </h1>
         </div>
 
@@ -130,13 +130,13 @@ const Customers = () => {
           <div>
             <label className="label">
               <User className="inline mr-2" size={18} />
-              Customer Name *
+              Nome Cliente *
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter customer name"
+              placeholder="Inserisci nome cliente"
               className="input-field"
               required
               autoFocus
@@ -146,13 +146,13 @@ const Customers = () => {
           <div>
             <label className="label">
               <Phone className="inline mr-2" size={18} />
-              Phone Number
+              Numero di Telefono
             </label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="Enter phone number"
+              placeholder="Inserisci numero di telefono"
               className="input-field"
             />
           </div>
@@ -160,12 +160,12 @@ const Customers = () => {
           <div>
             <label className="label">
               <MapPin className="inline mr-2" size={18} />
-              Address
+              Indirizzo
             </label>
             <textarea
               value={formData.address}
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Enter delivery address"
+              placeholder="Inserisci indirizzo di consegna"
               className="input-field min-h-[120px] resize-none"
               rows={3}
             />
@@ -176,18 +176,18 @@ const Customers = () => {
               {saving ? (
                 <>
                   <Loader2 className="animate-spin" size={24} />
-                  Saving...
+                  Salvataggio...
                 </>
               ) : (
                 <>
                   <Save size={24} />
-                  {editingCustomer ? 'Update Customer' : 'Add Customer'}
+                  {editingCustomer ? 'Aggiorna Cliente' : 'Aggiungi Cliente'}
                 </>
               )}
             </button>
             <button type="button" onClick={closeForm} className="btn-secondary">
               <X size={24} />
-              Cancel
+              Annulla
             </button>
           </div>
         </form>
@@ -199,7 +199,7 @@ const Customers = () => {
   return (
     <div className="page-container">
       <div className="flex items-center justify-between mb-6 animate-slide-up">
-        <h1 className="page-title mb-0">Customers</h1>
+        <h1 className="page-title mb-0">Clienti</h1>
         <button onClick={openAddForm} className="btn-icon bg-bread-600 text-white">
           <Plus size={24} />
         </button>
@@ -212,7 +212,7 @@ const Customers = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search customers..."
+          placeholder="Cerca clienti..."
           className="input-field pl-12"
         />
       </div>
@@ -222,15 +222,15 @@ const Customers = () => {
         <div className="card text-center py-10 animate-slide-up stagger-2">
           <div className="text-6xl mb-4">👥</div>
           <h3 className="text-xl font-display font-semibold text-bread-700 mb-2">
-            {searchQuery ? 'No customers found' : 'No customers yet'}
+            {searchQuery ? 'Nessun cliente trovato' : 'Nessun cliente'}
           </h3>
           <p className="text-bread-500 mb-6">
-            {searchQuery ? 'Try a different search term' : 'Add your first customer to get started'}
+            {searchQuery ? 'Prova con un altro termine' : 'Aggiungi il tuo primo cliente per iniziare'}
           </p>
           {!searchQuery && (
             <button onClick={openAddForm} className="btn-primary max-w-xs mx-auto">
               <Plus size={24} />
-              Add Customer
+              Aggiungi Cliente
             </button>
           )}
         </div>

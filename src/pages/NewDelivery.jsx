@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { getCustomers, getProducts, addDelivery, addProduct } from '../firebase/firestore';
 
-const UNITS = ['kg', 'pieces', 'boxes', 'loaves', 'dozen'];
+const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
 const NewDelivery = () => {
   const navigate = useNavigate();
@@ -96,7 +96,7 @@ const NewDelivery = () => {
     
     // Validate
     if (!formData.customerId) {
-      alert('Please select a customer');
+      alert('Seleziona un cliente');
       return;
     }
     
@@ -105,7 +105,7 @@ const NewDelivery = () => {
     );
     
     if (validItems.length === 0) {
-      alert('Please add at least one item');
+      alert('Aggiungi almeno un prodotto');
       return;
     }
 
@@ -128,7 +128,7 @@ const NewDelivery = () => {
       }, 1500);
     } catch (error) {
       console.error('Error saving delivery:', error);
-      alert('Error saving delivery. Please try again.');
+      alert('Errore nel salvataggio. Riprova.');
     } finally {
       setSaving(false);
     }
@@ -139,7 +139,7 @@ const NewDelivery = () => {
       <div className="page-container flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="spinner mx-auto mb-4"></div>
-          <p className="text-bread-600 font-medium">Loading...</p>
+          <p className="text-bread-600 font-medium">Caricamento...</p>
         </div>
       </div>
     );
@@ -153,9 +153,9 @@ const NewDelivery = () => {
           <Check size={48} className="text-green-600" />
         </div>
         <h2 className="text-2xl font-display font-bold text-bread-800 mb-2">
-          Delivery Saved!
+          Consegna Salvata!
         </h2>
-        <p className="text-bread-600">Redirecting to dashboard...</p>
+        <p className="text-bread-600">Ritorno alla home...</p>
       </div>
     );
   }
@@ -167,7 +167,7 @@ const NewDelivery = () => {
         <button onClick={() => navigate(-1)} className="btn-icon">
           <ChevronLeft size={24} />
         </button>
-        <h1 className="page-title mb-0">New Delivery</h1>
+        <h1 className="page-title mb-0">Nuova Consegna</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -175,7 +175,7 @@ const NewDelivery = () => {
         <div className="card animate-slide-up stagger-1">
           <label className="label">
             <User className="inline mr-2" size={18} />
-            Select Customer *
+            Seleziona Cliente *
           </label>
           <select
             value={formData.customerId}
@@ -183,7 +183,7 @@ const NewDelivery = () => {
             className="select-field"
             required
           >
-            <option value="">Choose a customer...</option>
+            <option value="">Scegli un cliente...</option>
             {customers.map(customer => (
               <option key={customer.id} value={customer.id}>
                 {customer.name}
@@ -196,7 +196,7 @@ const NewDelivery = () => {
         <div className="card animate-slide-up stagger-2">
           <label className="label">
             <Calendar className="inline mr-2" size={18} />
-            Delivery Date
+            Data Consegna
           </label>
           <input
             type="date"
@@ -211,7 +211,7 @@ const NewDelivery = () => {
           <div className="flex items-center justify-between mb-4">
             <label className="label mb-0">
               <Package className="inline mr-2" size={18} />
-              Products *
+              Prodotti *
             </label>
             <button
               type="button"
@@ -219,20 +219,20 @@ const NewDelivery = () => {
               className="text-bread-600 text-sm font-medium flex items-center gap-1"
             >
               <Plus size={16} />
-              New Product
+              Nuovo Prodotto
             </button>
           </div>
 
           {/* Add Product Modal */}
           {showAddProduct && (
             <div className="card mb-4 border-2 border-bread-400 animate-fade-in">
-              <label className="label">Add New Product</label>
+              <label className="label">Aggiungi Nuovo Prodotto</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={newProductName}
                   onChange={(e) => setNewProductName(e.target.value)}
-                  placeholder="Product name"
+                  placeholder="Nome prodotto"
                   className="input-field flex-1"
                   autoFocus
                 />
@@ -262,7 +262,7 @@ const NewDelivery = () => {
             {formData.items.map((item, index) => (
               <div key={index} className="card">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="badge">Item {index + 1}</span>
+                  <span className="badge">Articolo {index + 1}</span>
                   {formData.items.length > 1 && (
                     <button
                       type="button"
@@ -276,13 +276,13 @@ const NewDelivery = () => {
 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-bread-600 mb-1 block">Product</label>
+                    <label className="text-sm text-bread-600 mb-1 block">Prodotto</label>
                     <select
                       value={item.product}
                       onChange={(e) => updateItem(index, 'product', e.target.value)}
                       className="select-field"
                     >
-                      <option value="">Select product...</option>
+                      <option value="">Seleziona prodotto...</option>
                       {products.map(product => (
                         <option key={product.id || product.name} value={product.name}>
                           {product.name}
@@ -293,7 +293,7 @@ const NewDelivery = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm text-bread-600 mb-1 block">Quantity</label>
+                      <label className="text-sm text-bread-600 mb-1 block">Quantità</label>
                       <input
                         type="number"
                         value={item.quantity}
@@ -305,7 +305,7 @@ const NewDelivery = () => {
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-bread-600 mb-1 block">Unit</label>
+                      <label className="text-sm text-bread-600 mb-1 block">Unità</label>
                       <select
                         value={item.unit}
                         onChange={(e) => updateItem(index, 'unit', e.target.value)}
@@ -329,7 +329,7 @@ const NewDelivery = () => {
             className="btn-secondary mt-4"
           >
             <Plus size={24} />
-            Add Another Item
+            Aggiungi Altro Articolo
           </button>
         </div>
 
@@ -343,12 +343,12 @@ const NewDelivery = () => {
             {saving ? (
               <>
                 <Loader2 className="animate-spin" size={24} />
-                Saving...
+                Salvataggio...
               </>
             ) : (
               <>
                 <Save size={24} />
-                Save Delivery
+                Salva Consegna
               </>
             )}
           </button>

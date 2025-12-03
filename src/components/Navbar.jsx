@@ -4,10 +4,10 @@ import { Home, Users, Truck, BarChart3, Settings } from 'lucide-react';
 const Navbar = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
-    { to: '/customers', icon: Users, label: 'Customers' },
-    { to: '/delivery', icon: Truck, label: 'Deliver' },
-    { to: '/reports', icon: BarChart3, label: 'Reports' },
-    { to: '/settings', icon: Settings, label: 'Settings' },
+    { to: '/customers', icon: Users, label: 'Clienti' },
+    { to: '/delivery', icon: Truck, label: 'Consegna' },
+    { to: '/reports', icon: BarChart3, label: 'Report' },
+    { to: '/settings', icon: Settings, label: 'Impost.' },
   ];
 
   return (

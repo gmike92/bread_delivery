@@ -200,16 +200,16 @@ export const calculateDeliverySummary = (deliveries) => {
 
 export const seedDefaultProducts = async () => {
   const defaultProducts = [
-    { name: 'White Bread', defaultUnit: 'kg' },
-    { name: 'Sourdough', defaultUnit: 'kg' },
-    { name: 'Whole Wheat', defaultUnit: 'kg' },
-    { name: 'Baguette', defaultUnit: 'pieces' },
-    { name: 'Ciabatta', defaultUnit: 'pieces' },
-    { name: 'Brioche', defaultUnit: 'pieces' },
-    { name: 'Pizza Dough', defaultUnit: 'kg' },
-    { name: 'Focaccia', defaultUnit: 'pieces' },
-    { name: 'Croissant', defaultUnit: 'pieces' },
-    { name: 'Rolls', defaultUnit: 'pieces' }
+    { name: 'Pane Bianco', defaultUnit: 'kg' },
+    { name: 'Pane Integrale', defaultUnit: 'kg' },
+    { name: 'Pane di Segale', defaultUnit: 'kg' },
+    { name: 'Baguette', defaultUnit: 'pezzi' },
+    { name: 'Ciabatta', defaultUnit: 'pezzi' },
+    { name: 'Brioche', defaultUnit: 'pezzi' },
+    { name: 'Impasto Pizza', defaultUnit: 'kg' },
+    { name: 'Focaccia', defaultUnit: 'pezzi' },
+    { name: 'Cornetti', defaultUnit: 'pezzi' },
+    { name: 'Panini', defaultUnit: 'pezzi' }
   ];
   
   const existingProducts = await getProducts();

@@ -34,15 +34,15 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithEmailAndPassword(auth, email, password);
       return { success: true, user: result.user };
     } catch (error) {
-      let message = 'Login failed. Please try again.';
+      let message = 'Accesso fallito. Riprova.';
       if (error.code === 'auth/invalid-email') {
-        message = 'Invalid email address.';
+        message = 'Indirizzo email non valido.';
       } else if (error.code === 'auth/user-not-found') {
-        message = 'No account found with this email.';
+        message = 'Nessun account trovato con questa email.';
       } else if (error.code === 'auth/wrong-password') {
-        message = 'Incorrect password.';
+        message = 'Password errata.';
       } else if (error.code === 'auth/invalid-credential') {
-        message = 'Invalid email or password.';
+        message = 'Email o password non validi.';
       }
       return { success: false, error: message };
     }

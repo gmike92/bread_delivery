@@ -37,13 +37,13 @@ const Login = () => {
         {/* Logo & Title */}
         <div className="text-center mb-10 animate-slide-up">
           <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-bread-400 to-bread-600 rounded-3xl shadow-bread-lg flex items-center justify-center transform -rotate-6">
-            <span className="text-5xl" role="img" aria-label="bread">🍞</span>
+            <span className="text-5xl" role="img" aria-label="pane">🍞</span>
           </div>
           <h1 className="text-3xl font-display font-bold text-bread-800">
-            Bread Delivery
+            Consegne Pane
           </h1>
           <p className="text-bread-600 mt-2 font-medium">
-            Manage your deliveries with ease
+            Gestisci le tue consegne con facilità
           </p>
         </div>
 
@@ -57,7 +57,7 @@ const Login = () => {
 
           <div>
             <label htmlFor="email" className="label">
-              Email Address
+              Indirizzo Email
             </label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-bread-400" size={22} />
@@ -66,7 +66,7 @@ const Login = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="driver@bakery.com"
+                placeholder="autista@panificio.it"
                 className="input-field pl-12"
                 required
                 autoComplete="email"
@@ -101,12 +101,12 @@ const Login = () => {
             {loading ? (
               <>
                 <Loader2 className="animate-spin" size={24} />
-                Signing in...
+                Accesso in corso...
               </>
             ) : (
               <>
                 <LogIn size={24} />
-                Sign In
+                Accedi
               </>
             )}
           </button>
@@ -114,7 +114,7 @@ const Login = () => {
 
         {/* Footer */}
         <p className="text-center text-bread-500 text-sm mt-8 animate-fade-in stagger-3">
-          Contact your administrator if you need access
+          Contatta l'amministratore se hai bisogno di accesso
         </p>
       </div>
     </div>
