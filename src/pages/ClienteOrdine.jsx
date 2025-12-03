@@ -41,6 +41,7 @@ const ClienteOrdine = () => {
   }, [user]);
 
   const loadData = async () => {
+    // Load products first (always needed)
     try {
       let productsData = await getProducts();
       
@@ -49,15 +50,23 @@ const ClienteOrdine = () => {
         productsData = await seedDefaultProducts(true);
       }
       
-      const ordersData = user ? await getOrdersByCustomer(user.uid) : [];
-      
       setProducts(productsData);
-      setMyOrders(ordersData);
     } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading products:', error);
     }
+
+    // Load orders separately (may fail without index, but shouldn't block products)
+    try {
+      if (user) {
+        const ordersData = await getOrdersByCustomer(user.uid);
+        setMyOrders(ordersData);
+      }
+    } catch (error) {
+      console.error('Error loading orders (index may be needed):', error);
+      setMyOrders([]);
+    }
+    
+    setLoading(false);
   };
 
   const addItem = () => {
