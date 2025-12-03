@@ -380,9 +380,40 @@ export const updateOrderStatus = async (orderId, status) => {
   });
 };
 
+export const updateOrder = async (orderId, orderData) => {
+  const docRef = doc(db, 'orders', orderId);
+  await updateDoc(docRef, {
+    ...orderData,
+    updatedAt: Timestamp.now()
+  });
+};
+
 export const deleteOrder = async (orderId) => {
   const docRef = doc(db, 'orders', orderId);
   await deleteDoc(docRef);
+};
+
+// Check if an order can still be modified
+// Deadline: 21:00 of the day before delivery
+export const canModifyOrder = (deliveryDate) => {
+  const now = new Date();
+  
+  // Parse the delivery date
+  let deliveryDateObj;
+  if (typeof deliveryDate === 'string') {
+    deliveryDateObj = new Date(deliveryDate + 'T00:00:00');
+  } else if (deliveryDate?.toDate) {
+    deliveryDateObj = deliveryDate.toDate();
+  } else {
+    deliveryDateObj = new Date(deliveryDate);
+  }
+  
+  // Calculate deadline: 21:00 of the day before delivery
+  const deadline = new Date(deliveryDateObj);
+  deadline.setDate(deadline.getDate() - 1); // Day before
+  deadline.setHours(21, 0, 0, 0); // 21:00
+  
+  return now < deadline;
 };
 
 export const calculateOrdersSummary = (orders) => {

@@ -8,10 +8,21 @@ import {
   Loader2,
   Check,
   ShoppingBag,
-  Clock
+  Clock,
+  Edit2,
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, addOrder, getOrdersByCustomer, seedDefaultProducts } from '../firebase/firestore';
+import { 
+  getProducts, 
+  addOrder, 
+  updateOrder,
+  deleteOrder,
+  getOrdersByCustomer, 
+  seedDefaultProducts,
+  canModifyOrder 
+} from '../firebase/firestore';
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
@@ -21,8 +32,10 @@ const ClienteOrdine = () => {
   const [myOrders, setMyOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState('nuovo'); // 'nuovo' or 'storico'
+  const [editingOrder, setEditingOrder] = useState(null); // Order being edited
 
   // Get tomorrow's date as default
   const getTomorrow = () => {
@@ -31,10 +44,46 @@ const ClienteOrdine = () => {
     return tomorrow.toISOString().split('T')[0];
   };
 
-  const [formData, setFormData] = useState({
+  const getEmptyFormData = () => ({
     deliveryDate: getTomorrow(),
     items: [{ product: '', quantity: '', unit: 'pezzi' }]
   });
+
+  const [formData, setFormData] = useState(getEmptyFormData());
+
+  // Format delivery date for form input
+  const formatDateForInput = (date) => {
+    if (!date) return getTomorrow();
+    if (typeof date === 'string') return date;
+    if (date?.toDate) {
+      return date.toDate().toISOString().split('T')[0];
+    }
+    return new Date(date).toISOString().split('T')[0];
+  };
+
+  // Get deadline string for display
+  const getDeadlineString = (deliveryDate) => {
+    let dateObj;
+    if (typeof deliveryDate === 'string') {
+      dateObj = new Date(deliveryDate + 'T00:00:00');
+    } else if (deliveryDate?.toDate) {
+      dateObj = deliveryDate.toDate();
+    } else {
+      dateObj = new Date(deliveryDate);
+    }
+    
+    const deadline = new Date(dateObj);
+    deadline.setDate(deadline.getDate() - 1);
+    deadline.setHours(21, 0, 0, 0);
+    
+    return deadline.toLocaleDateString('it-IT', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   useEffect(() => {
     loadData();
@@ -96,6 +145,53 @@ const ClienteOrdine = () => {
     setFormData({ ...formData, items: newItems });
   };
 
+  // Start editing an existing order
+  const handleEditOrder = (order) => {
+    // Check if order can still be modified
+    if (!canModifyOrder(order.deliveryDate)) {
+      alert('Il termine per modificare questo ordine è scaduto (ore 21:00 del giorno precedente)');
+      return;
+    }
+    
+    setEditingOrder(order);
+    setFormData({
+      deliveryDate: formatDateForInput(order.deliveryDate),
+      items: order.items.map(item => ({
+        product: item.product,
+        quantity: item.quantity.toString(),
+        unit: item.unit
+      }))
+    });
+    setActiveTab('nuovo');
+  };
+
+  // Cancel editing
+  const handleCancelEdit = () => {
+    setEditingOrder(null);
+    setFormData(getEmptyFormData());
+  };
+
+  // Delete an order
+  const handleDeleteOrder = async (orderId, deliveryDate) => {
+    if (!canModifyOrder(deliveryDate)) {
+      alert('Il termine per eliminare questo ordine è scaduto (ore 21:00 del giorno precedente)');
+      return;
+    }
+    
+    if (!confirm('Sei sicuro di voler eliminare questo ordine?')) return;
+    
+    setDeleting(true);
+    try {
+      await deleteOrder(orderId);
+      await loadData();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('Errore nell\'eliminazione. Riprova.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -113,27 +209,39 @@ const ClienteOrdine = () => {
       return;
     }
 
+    // Check deadline for the selected delivery date
+    if (!canModifyOrder(formData.deliveryDate)) {
+      alert('Il termine per ordinare per questa data è scaduto (ore 21:00 del giorno precedente)');
+      return;
+    }
+
     setSaving(true);
     try {
-      await addOrder({
-        customerId: linkedCustomer.id, // Use linked customer ID from customers collection
-        customerName: linkedCustomer.name || userProfile?.name || user.email,
-        customerEmail: user.email,
+      const orderData = {
         deliveryDate: formData.deliveryDate,
         items: validItems.map(item => ({
           product: item.product,
           quantity: parseFloat(item.quantity),
           unit: item.unit
         }))
-      });
+      };
+
+      if (editingOrder) {
+        // Update existing order
+        await updateOrder(editingOrder.id, orderData);
+      } else {
+        // Create new order
+        await addOrder({
+          customerId: linkedCustomer.id,
+          customerName: linkedCustomer.name || userProfile?.name || user.email,
+          customerEmail: user.email,
+          ...orderData
+        });
+      }
       
       setSaved(true);
-      // Reset form
-      setFormData({
-        deliveryDate: getTomorrow(),
-        items: [{ product: '', quantity: '', unit: 'pezzi' }]
-      });
-      // Reload orders
+      setEditingOrder(null);
+      setFormData(getEmptyFormData());
       await loadData();
       
       setTimeout(() => {
@@ -195,22 +303,52 @@ const ClienteOrdine = () => {
       {saved && (
         <div className="fixed top-4 left-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-bread flex items-center justify-center gap-2 text-sm font-medium shadow-lg animate-slide-down">
           <Check size={18} />
-          <span>Ordine inviato con successo!</span>
+          <span>{editingOrder ? 'Ordine modificato!' : 'Ordine inviato con successo!'}</span>
+        </div>
+      )}
+
+      {/* Editing Banner */}
+      {editingOrder && (
+        <div className="mb-4 bg-amber-50 border-2 border-amber-300 rounded-bread p-3 flex items-center justify-between animate-slide-down">
+          <div className="flex items-center gap-2">
+            <Edit2 size={18} className="text-amber-600" />
+            <span className="text-amber-800 font-medium text-sm">
+              Modifica ordine per {formatDate(editingOrder.deliveryDate)}
+            </span>
+          </div>
+          <button 
+            onClick={handleCancelEdit}
+            className="text-amber-600 hover:text-amber-800 p-1"
+          >
+            <X size={20} />
+          </button>
         </div>
       )}
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6 animate-slide-up stagger-1">
         <button
-          onClick={() => setActiveTab('nuovo')}
+          onClick={() => {
+            setActiveTab('nuovo');
+            if (!editingOrder) setFormData(getEmptyFormData());
+          }}
           className={`flex-1 py-3 px-4 rounded-bread font-semibold transition-all ${
             activeTab === 'nuovo'
               ? 'bg-bread-600 text-white'
               : 'bg-white text-bread-600 border-2 border-bread-200'
           }`}
         >
-          <Plus size={20} className="inline mr-2" />
-          Nuovo Ordine
+          {editingOrder ? (
+            <>
+              <Edit2 size={20} className="inline mr-2" />
+              Modifica
+            </>
+          ) : (
+            <>
+              <Plus size={20} className="inline mr-2" />
+              Nuovo Ordine
+            </>
+          )}
         </button>
         <button
           onClick={() => setActiveTab('storico')}
@@ -346,6 +484,23 @@ const ClienteOrdine = () => {
             </button>
           </div>
 
+          {/* Deadline Info */}
+          {formData.deliveryDate && (
+            <div className="card bg-blue-50 border-2 border-blue-200 animate-slide-up">
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-blue-800">
+                    Termine per modifiche:
+                  </p>
+                  <p className="text-blue-600">
+                    {getDeadlineString(formData.deliveryDate)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Submit Button */}
           <div className="fixed bottom-24 left-0 right-0 px-4 z-40">
             <button
@@ -356,7 +511,12 @@ const ClienteOrdine = () => {
               {saving ? (
                 <>
                   <Loader2 className="animate-spin" size={24} />
-                  Invio in corso...
+                  {editingOrder ? 'Salvataggio...' : 'Invio in corso...'}
+                </>
+              ) : editingOrder ? (
+                <>
+                  <Check size={24} />
+                  Salva Modifiche
                 </>
               ) : (
                 <>
@@ -380,30 +540,71 @@ const ClienteOrdine = () => {
               </p>
             </div>
           ) : (
-            myOrders.map((order, index) => (
-              <div 
-                key={order.id} 
-                className="card"
-                style={{ animationDelay: `${0.05 * index}s` }}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={18} className="text-bread-600" />
-                    <span className="font-semibold text-bread-800">
-                      {formatDate(order.deliveryDate)}
-                    </span>
+            myOrders.map((order, index) => {
+              const isEditable = canModifyOrder(order.deliveryDate);
+              const isCurrentlyEditing = editingOrder?.id === order.id;
+              
+              return (
+                <div 
+                  key={order.id} 
+                  className={`card ${isCurrentlyEditing ? 'ring-2 ring-amber-400 bg-amber-50' : ''}`}
+                  style={{ animationDelay: `${0.05 * index}s` }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={18} className="text-bread-600" />
+                      <span className="font-semibold text-bread-800">
+                        {formatDate(order.deliveryDate)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(order.status)}
+                    </div>
                   </div>
-                  {getStatusBadge(order.status)}
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {order.items?.map((item, i) => (
+                      <span key={i} className="badge text-xs">
+                        {item.product}: {item.quantity} {item.unit}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Edit/Delete buttons or deadline passed message */}
+                  {isEditable ? (
+                    <div className="flex gap-2 pt-2 border-t border-bread-100">
+                      <button
+                        onClick={() => handleEditOrder(order)}
+                        disabled={isCurrentlyEditing}
+                        className={`flex-1 py-2 px-3 rounded-bread text-sm font-medium flex items-center justify-center gap-1 transition-all ${
+                          isCurrentlyEditing 
+                            ? 'bg-amber-200 text-amber-700 cursor-not-allowed' 
+                            : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
+                        }`}
+                      >
+                        <Edit2 size={16} />
+                        {isCurrentlyEditing ? 'In modifica...' : 'Modifica'}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteOrder(order.id, order.deliveryDate)}
+                        disabled={deleting}
+                        className="py-2 px-3 rounded-bread text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 active:bg-red-300 transition-all flex items-center justify-center gap-1"
+                      >
+                        <Trash2 size={16} />
+                        Elimina
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-bread-100">
+                      <p className="text-xs text-bread-400 flex items-center gap-1">
+                        <Clock size={12} />
+                        Termine modifica scaduto
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {order.items?.map((item, i) => (
-                    <span key={i} className="badge text-xs">
-                      {item.product}: {item.quantity} {item.unit}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
