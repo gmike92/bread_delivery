@@ -295,15 +295,21 @@ export const getOrdersByDate = async (date) => {
 export const getOrdersByCustomer = async (customerId) => {
   const q = query(
     collection(db, 'orders'),
-    where('customerId', '==', customerId),
-    orderBy('deliveryDate', 'desc')
+    where('customerId', '==', customerId)
   );
   
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
+  const orders = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   }));
+  
+  // Sort by deliveryDate in JavaScript to avoid needing composite index
+  return orders.sort((a, b) => {
+    const dateA = a.deliveryDate?.toDate?.() || new Date(0);
+    const dateB = b.deliveryDate?.toDate?.() || new Date(0);
+    return dateB - dateA;
+  });
 };
 
 export const addOrder = async (orderData) => {
