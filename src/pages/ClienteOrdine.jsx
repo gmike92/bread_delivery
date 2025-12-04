@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Calendar, 
   Package, 
@@ -11,7 +11,14 @@ import {
   Clock,
   Edit2,
   AlertCircle,
-  X
+  X,
+  RefreshCw,
+  MessageSquare,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -26,6 +33,25 @@ import {
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
+// Helper to get week dates
+const getWeekDates = (baseDate = new Date()) => {
+  const dates = [];
+  const startOfWeek = new Date(baseDate);
+  const day = startOfWeek.getDay();
+  const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  startOfWeek.setDate(diff);
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startOfWeek);
+    date.setDate(startOfWeek.getDate() + i);
+    dates.push(date);
+  }
+  return dates;
+};
+
+// Day names in Italian
+const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
 const ClienteOrdine = () => {
   const { user, userProfile, linkedCustomer } = useAuth();
   const [products, setProducts] = useState([]);
@@ -34,8 +60,11 @@ const ClienteOrdine = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [activeTab, setActiveTab] = useState('nuovo'); // 'nuovo' or 'storico'
+  const [activeTab, setActiveTab] = useState('nuovo'); // 'nuovo', 'storico', or 'calendario'
   const [editingOrder, setEditingOrder] = useState(null); // Order being edited
+  const [calendarWeekStart, setCalendarWeekStart] = useState(new Date());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState('default');
 
   // Get tomorrow's date as default
   const getTomorrow = () => {
@@ -46,7 +75,8 @@ const ClienteOrdine = () => {
 
   const getEmptyFormData = () => ({
     deliveryDate: getTomorrow(),
-    items: [{ product: '', quantity: '', unit: 'pezzi' }]
+    items: [{ product: '', quantity: '', unit: 'pezzi' }],
+    notes: '' // Note consegna
   });
 
   const [formData, setFormData] = useState(getEmptyFormData());
@@ -85,9 +115,123 @@ const ClienteOrdine = () => {
     });
   };
 
+  // Check notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+      // Check if user had enabled notifications before
+      const savedPref = localStorage.getItem('breadDeliveryNotifications');
+      if (savedPref === 'enabled' && Notification.permission === 'granted') {
+        setNotificationsEnabled(true);
+        scheduleDeadlineReminder();
+      }
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [linkedCustomer]);
+
+  // Schedule notification for 20:00 deadline reminder
+  const scheduleDeadlineReminder = useCallback(() => {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    
+    const now = new Date();
+    const reminderTime = new Date();
+    reminderTime.setHours(20, 0, 0, 0);
+    
+    // If it's already past 20:00, schedule for tomorrow
+    if (now > reminderTime) {
+      reminderTime.setDate(reminderTime.getDate() + 1);
+    }
+    
+    const timeUntilReminder = reminderTime.getTime() - now.getTime();
+    
+    // Clear any existing timeout
+    if (window.deadlineReminderTimeout) {
+      clearTimeout(window.deadlineReminderTimeout);
+    }
+    
+    window.deadlineReminderTimeout = setTimeout(() => {
+      new Notification('🍞 Ricordati di ordinare!', {
+        body: 'Hai tempo fino alle 21:00 per ordinare il pane per domani.',
+        icon: '/apple-touch-icon.svg',
+        tag: 'deadline-reminder',
+        requireInteraction: true
+      });
+      // Reschedule for next day
+      scheduleDeadlineReminder();
+    }, timeUntilReminder);
+    
+    console.log(`Notification scheduled for ${reminderTime.toLocaleString()}`);
+  }, []);
+
+  // Toggle notifications
+  const handleToggleNotifications = async () => {
+    if (!('Notification' in window)) {
+      alert('Il tuo browser non supporta le notifiche');
+      return;
+    }
+
+    if (notificationsEnabled) {
+      // Disable
+      setNotificationsEnabled(false);
+      localStorage.setItem('breadDeliveryNotifications', 'disabled');
+      if (window.deadlineReminderTimeout) {
+        clearTimeout(window.deadlineReminderTimeout);
+      }
+    } else {
+      // Request permission and enable
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      
+      if (permission === 'granted') {
+        setNotificationsEnabled(true);
+        localStorage.setItem('breadDeliveryNotifications', 'enabled');
+        scheduleDeadlineReminder();
+        // Show test notification
+        new Notification('🍞 Notifiche attivate!', {
+          body: 'Riceverai un promemoria alle 20:00 per ordinare.',
+          icon: '/apple-touch-icon.svg'
+        });
+      } else {
+        alert('Permesso notifiche negato. Abilita le notifiche nelle impostazioni del browser.');
+      }
+    }
+  };
+
+  // Quick reorder - copy items from past order
+  const handleQuickReorder = (order) => {
+    setFormData({
+      deliveryDate: getTomorrow(),
+      items: order.items.map(item => ({
+        product: item.product,
+        quantity: item.quantity.toString(),
+        unit: item.unit
+      })),
+      notes: order.notes || ''
+    });
+    setEditingOrder(null);
+    setActiveTab('nuovo');
+  };
+
+  // Calendar navigation
+  const navigateWeek = (direction) => {
+    const newDate = new Date(calendarWeekStart);
+    newDate.setDate(newDate.getDate() + (direction * 7));
+    setCalendarWeekStart(newDate);
+  };
+
+  // Get orders for a specific date (for calendar)
+  const getOrdersForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return myOrders.filter(order => {
+      const orderDate = order.deliveryDate?.toDate 
+        ? order.deliveryDate.toDate().toISOString().split('T')[0]
+        : order.deliveryDate;
+      return orderDate === dateStr;
+    });
+  };
 
   const loadData = async () => {
     // Load products first (always needed)
@@ -160,7 +304,8 @@ const ClienteOrdine = () => {
         product: item.product,
         quantity: item.quantity.toString(),
         unit: item.unit
-      }))
+      })),
+      notes: order.notes || ''
     });
     setActiveTab('nuovo');
   };
@@ -223,7 +368,8 @@ const ClienteOrdine = () => {
           product: item.product,
           quantity: parseFloat(item.quantity),
           unit: item.unit
-        }))
+        })),
+        notes: formData.notes.trim() || null // Note consegna
       };
 
       if (editingOrder) {
@@ -325,6 +471,30 @@ const ClienteOrdine = () => {
         </div>
       )}
 
+      {/* Notification Toggle */}
+      <div className="mb-4 animate-slide-up">
+        <button
+          onClick={handleToggleNotifications}
+          className={`w-full py-3 px-4 rounded-bread font-medium flex items-center justify-center gap-2 transition-all ${
+            notificationsEnabled
+              ? 'bg-green-100 text-green-700 border-2 border-green-300'
+              : 'bg-gray-100 text-gray-600 border-2 border-gray-200'
+          }`}
+        >
+          {notificationsEnabled ? (
+            <>
+              <Bell size={18} />
+              Promemoria ore 20:00 attivo
+            </>
+          ) : (
+            <>
+              <BellOff size={18} />
+              Attiva promemoria ore 20:00
+            </>
+          )}
+        </button>
+      </div>
+
       {/* Tabs */}
       <div className="flex gap-2 mb-6 animate-slide-up stagger-1">
         <button
@@ -332,7 +502,7 @@ const ClienteOrdine = () => {
             setActiveTab('nuovo');
             if (!editingOrder) setFormData(getEmptyFormData());
           }}
-          className={`flex-1 py-3 px-4 rounded-bread font-semibold transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-bread font-semibold transition-all text-sm ${
             activeTab === 'nuovo'
               ? 'bg-bread-600 text-white'
               : 'bg-white text-bread-600 border-2 border-bread-200'
@@ -340,26 +510,37 @@ const ClienteOrdine = () => {
         >
           {editingOrder ? (
             <>
-              <Edit2 size={20} className="inline mr-2" />
+              <Edit2 size={16} className="inline mr-1" />
               Modifica
             </>
           ) : (
             <>
-              <Plus size={20} className="inline mr-2" />
-              Nuovo Ordine
+              <Plus size={16} className="inline mr-1" />
+              Nuovo
             </>
           )}
         </button>
         <button
           onClick={() => setActiveTab('storico')}
-          className={`flex-1 py-3 px-4 rounded-bread font-semibold transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-bread font-semibold transition-all text-sm ${
             activeTab === 'storico'
               ? 'bg-bread-600 text-white'
               : 'bg-white text-bread-600 border-2 border-bread-200'
           }`}
         >
-          <Clock size={20} className="inline mr-2" />
-          I Miei Ordini
+          <Clock size={16} className="inline mr-1" />
+          Storico
+        </button>
+        <button
+          onClick={() => setActiveTab('calendario')}
+          className={`flex-1 py-2.5 px-3 rounded-bread font-semibold transition-all text-sm ${
+            activeTab === 'calendario'
+              ? 'bg-bread-600 text-white'
+              : 'bg-white text-bread-600 border-2 border-bread-200'
+          }`}
+        >
+          <CalendarDays size={16} className="inline mr-1" />
+          Calendario
         </button>
       </div>
 
@@ -484,6 +665,21 @@ const ClienteOrdine = () => {
             </button>
           </div>
 
+          {/* Note Consegna */}
+          <div className="card animate-slide-up stagger-4">
+            <label className="label">
+              <MessageSquare className="inline mr-2" size={18} />
+              Note Consegna (opzionale)
+            </label>
+            <textarea
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder="Es: Lasciare al bar se chiuso, chiamare prima..."
+              className="input-field min-h-[80px] resize-none"
+              rows={3}
+            />
+          </div>
+
           {/* Deadline Info */}
           {formData.deliveryDate && (
             <div className="card bg-blue-50 border-2 border-blue-200 animate-slide-up">
@@ -527,7 +723,7 @@ const ClienteOrdine = () => {
             </button>
           </div>
         </form>
-      ) : (
+      ) : activeTab === 'storico' ? (
         <div className="space-y-4 animate-slide-up">
           {myOrders.length === 0 ? (
             <div className="card text-center py-10">
@@ -562,7 +758,7 @@ const ClienteOrdine = () => {
                     </div>
                   </div>
                   
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="flex flex-wrap gap-2 mb-2">
                     {order.items?.map((item, i) => (
                       <span key={i} className="badge text-xs">
                         {item.product}: {item.quantity} {item.unit}
@@ -570,42 +766,155 @@ const ClienteOrdine = () => {
                     ))}
                   </div>
 
-                  {/* Edit/Delete buttons or deadline passed message */}
-                  {isEditable ? (
-                    <div className="flex gap-2 pt-2 border-t border-bread-100">
-                      <button
-                        onClick={() => handleEditOrder(order)}
-                        disabled={isCurrentlyEditing}
-                        className={`flex-1 py-2 px-3 rounded-bread text-sm font-medium flex items-center justify-center gap-1 transition-all ${
-                          isCurrentlyEditing 
-                            ? 'bg-amber-200 text-amber-700 cursor-not-allowed' 
-                            : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
-                        }`}
-                      >
-                        <Edit2 size={16} />
-                        {isCurrentlyEditing ? 'In modifica...' : 'Modifica'}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteOrder(order.id, order.deliveryDate)}
-                        disabled={deleting}
-                        className="py-2 px-3 rounded-bread text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 active:bg-red-300 transition-all flex items-center justify-center gap-1"
-                      >
-                        <Trash2 size={16} />
-                        Elimina
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="pt-2 border-t border-bread-100">
-                      <p className="text-xs text-bread-400 flex items-center gap-1">
-                        <Clock size={12} />
-                        Termine modifica scaduto
+                  {/* Show notes if present */}
+                  {order.notes && (
+                    <div className="mb-3 p-2 bg-blue-50 rounded-lg">
+                      <p className="text-xs text-blue-700 flex items-start gap-1">
+                        <MessageSquare size={12} className="mt-0.5 flex-shrink-0" />
+                        {order.notes}
                       </p>
                     </div>
                   )}
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-2 border-t border-bread-100">
+                    {/* Quick Reorder - always visible */}
+                    <button
+                      onClick={() => handleQuickReorder(order)}
+                      className="flex-1 py-2 px-3 rounded-bread text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 active:bg-green-300 transition-all flex items-center justify-center gap-1"
+                    >
+                      <RefreshCw size={16} />
+                      Riordina
+                    </button>
+                    
+                    {isEditable ? (
+                      <>
+                        <button
+                          onClick={() => handleEditOrder(order)}
+                          disabled={isCurrentlyEditing}
+                          className={`py-2 px-3 rounded-bread text-sm font-medium flex items-center justify-center gap-1 transition-all ${
+                            isCurrentlyEditing 
+                              ? 'bg-amber-200 text-amber-700 cursor-not-allowed' 
+                              : 'bg-amber-100 text-amber-700 hover:bg-amber-200 active:bg-amber-300'
+                          }`}
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteOrder(order.id, order.deliveryDate)}
+                          disabled={deleting}
+                          className="py-2 px-3 rounded-bread text-sm font-medium bg-red-100 text-red-700 hover:bg-red-200 active:bg-red-300 transition-all flex items-center justify-center gap-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-bread-400 flex items-center gap-1 py-2">
+                        <Clock size={12} />
+                        Scaduto
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })
           )}
+        </div>
+      ) : (
+        /* Calendar View */
+        <div className="animate-slide-up">
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => navigateWeek(-1)}
+              className="p-2 rounded-bread bg-bread-100 text-bread-700 hover:bg-bread-200"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            <span className="font-semibold text-bread-800">
+              {getWeekDates(calendarWeekStart)[0].toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })}
+            </span>
+            <button
+              onClick={() => navigateWeek(1)}
+              className="p-2 rounded-bread bg-bread-100 text-bread-700 hover:bg-bread-200"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+
+          {/* Week Grid */}
+          <div className="grid grid-cols-7 gap-1 mb-4">
+            {DAY_NAMES.map(day => (
+              <div key={day} className="text-center text-xs font-semibold text-bread-500 py-1">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {getWeekDates(calendarWeekStart).map((date, index) => {
+              const orders = getOrdersForDate(date);
+              const isToday = date.toDateString() === new Date().toDateString();
+              const isPast = date < new Date() && !isToday;
+              const dateStr = date.toISOString().split('T')[0];
+              
+              return (
+                <div 
+                  key={index}
+                  className={`card p-3 ${isToday ? 'ring-2 ring-bread-500 bg-bread-50' : ''} ${isPast ? 'opacity-60' : ''}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-bold text-lg ${isToday ? 'text-bread-700' : 'text-bread-800'}`}>
+                        {date.getDate()}
+                      </span>
+                      <span className="text-sm text-bread-500">
+                        {DAY_NAMES[index]}
+                      </span>
+                      {isToday && (
+                        <span className="badge text-xs bg-bread-500 text-white">Oggi</span>
+                      )}
+                    </div>
+                    {!isPast && orders.length === 0 && (
+                      <button
+                        onClick={() => {
+                          setFormData({ ...getEmptyFormData(), deliveryDate: dateStr });
+                          setActiveTab('nuovo');
+                        }}
+                        className="text-xs bg-bread-100 text-bread-600 px-2 py-1 rounded-full hover:bg-bread-200"
+                      >
+                        + Ordina
+                      </button>
+                    )}
+                  </div>
+                  
+                  {orders.length > 0 ? (
+                    <div className="space-y-1">
+                      {orders.map(order => (
+                        <div key={order.id} className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded flex items-center justify-between">
+                          <span>
+                            {order.items?.map(i => `${i.product} ${i.quantity}${i.unit}`).join(', ')}
+                          </span>
+                          {canModifyOrder(order.deliveryDate) && (
+                            <button
+                              onClick={() => handleEditOrder(order)}
+                              className="ml-2 text-green-600 hover:text-green-800"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-bread-400">
+                      {isPast ? 'Nessun ordine' : 'Nessun ordine previsto'}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -197,6 +197,7 @@ const OrdiniGiorno = () => {
                   </div>
                 `).join('')}
               </div>
+              ${order.notes ? `<div class="notes" style="margin-top: 8px; padding: 8px; background: #eff6ff; border-radius: 4px; font-size: 12px; color: #1d4ed8;">📝 ${order.notes}</div>` : ''}
             </div>
           `).join('')}
 
@@ -388,7 +389,7 @@ const OrdiniGiorno = () => {
                 </div>
 
                 {/* Items with delivery progress */}
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-3">
                   {order.items?.map((item, i) => (
                     <div key={i} className="flex items-center gap-3">
                       {item.isComplete ? (
@@ -420,6 +421,16 @@ const OrdiniGiorno = () => {
                     </div>
                   ))}
                 </div>
+
+                {/* Customer Notes */}
+                {order.notes && (
+                  <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-bread">
+                    <p className="text-sm text-blue-700 flex items-start gap-2">
+                      <span className="text-lg">📝</span>
+                      <span>{order.notes}</span>
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   {order.status === 'pending' && (
