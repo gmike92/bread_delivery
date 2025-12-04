@@ -3,21 +3,37 @@ import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package, Euro } f
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
-  const { isCliente, isAutista } = useAuth();
+  const { isCliente, isAutista, isAdmin } = useAuth();
 
   // Navigation items based on role
-  const navItems = isCliente ? [
-    { to: '/', icon: Home, label: 'Home' },
-    { to: '/ordine', icon: ShoppingBag, label: 'Ordina' },
-    { to: '/settings', icon: Settings, label: 'Profilo' },
-  ] : [
-    { to: '/', icon: Home, label: 'Home' },
-    { to: '/ordini', icon: Package, label: 'Ordini' },
-    { to: '/delivery', icon: Truck, label: 'Consegna' },
-    { to: '/contabilita', icon: Euro, label: 'Conti' },
-    { to: '/reports', icon: BarChart3, label: 'Report' },
-    { to: '/settings', icon: Settings, label: 'Altro' },
-  ];
+  let navItems;
+  
+  if (isCliente) {
+    navItems = [
+      { to: '/', icon: Home, label: 'Home' },
+      { to: '/ordine', icon: ShoppingBag, label: 'Ordina' },
+      { to: '/settings', icon: Settings, label: 'Profilo' },
+    ];
+  } else if (isAdmin) {
+    // Admin sees everything including Contabilità
+    navItems = [
+      { to: '/', icon: Home, label: 'Home' },
+      { to: '/ordini', icon: Package, label: 'Ordini' },
+      { to: '/delivery', icon: Truck, label: 'Consegna' },
+      { to: '/contabilita', icon: Euro, label: 'Conti' },
+      { to: '/reports', icon: BarChart3, label: 'Report' },
+      { to: '/settings', icon: Settings, label: 'Altro' },
+    ];
+  } else {
+    // Autista - no Contabilità
+    navItems = [
+      { to: '/', icon: Home, label: 'Home' },
+      { to: '/ordini', icon: Package, label: 'Ordini' },
+      { to: '/delivery', icon: Truck, label: 'Consegna' },
+      { to: '/reports', icon: BarChart3, label: 'Report' },
+      { to: '/settings', icon: Settings, label: 'Altro' },
+    ];
+  }
 
   return (
     <nav 
