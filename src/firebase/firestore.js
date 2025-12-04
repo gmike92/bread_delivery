@@ -511,12 +511,12 @@ export const calculateDeliveryProgress = (orders, deliveries) => {
 
 export const seedDefaultProducts = async (forceAdd = false) => {
   const defaultProducts = [
-    { name: 'Pane Comune', defaultUnit: 'kg', price: 3.50 },
-    { name: 'Pane Speciale', defaultUnit: 'kg', price: 4.50 },
-    { name: 'Pane di Segale', defaultUnit: 'kg', price: 5.00 },
-    { name: 'Segalini', defaultUnit: 'kg', price: 5.50 },
-    { name: 'Focaccia', defaultUnit: 'kg', price: 6.00 },
-    { name: 'Pizza', defaultUnit: 'kg', price: 7.00 }
+    { name: 'Pane Comune', defaultUnit: 'kg' },
+    { name: 'Pane Speciale', defaultUnit: 'kg' },
+    { name: 'Pane di Segale', defaultUnit: 'kg' },
+    { name: 'Segalini', defaultUnit: 'kg' },
+    { name: 'Focaccia', defaultUnit: 'kg' },
+    { name: 'Pizza', defaultUnit: 'kg' }
   ];
   
   const existingProducts = await getProducts();
