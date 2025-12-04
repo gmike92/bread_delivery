@@ -34,7 +34,7 @@ import { auth } from '../firebase/config';
 import { createUserProfile } from '../firebase/firestore';
 
 const Settings = () => {
-  const { user, logout, isAutista, userProfile } = useAuth();
+  const { user, logout, isAutista, isAdmin, userProfile } = useAuth();
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
@@ -304,12 +304,13 @@ const Settings = () => {
         </button>
       </div>
 
-      {/* Product Management */}
+      {/* Product Management - Only for Admin */}
+      {isAdmin && (
       <div className="animate-slide-up stagger-2">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-display font-semibold text-bread-700 flex items-center gap-2">
             <Package size={20} />
-            Prodotti
+            Gestione Prodotti
           </h2>
           <div className="flex gap-2">
             {products.length === 0 && (
@@ -432,9 +433,10 @@ const Settings = () => {
           </div>
         )}
       </div>
+      )}
 
-      {/* User Management - Only for Autista */}
-      {isAutista && (
+      {/* User Management - Only for Admin */}
+      {isAdmin && (
         <div className="mt-8 animate-slide-up stagger-3">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-display font-semibold text-bread-700 flex items-center gap-2">
@@ -498,7 +500,8 @@ const Settings = () => {
                     className="select-field"
                   >
                     <option value="cliente">Cliente</option>
-                    <option value="autista">Autista/Admin</option>
+                    <option value="autista">Autista</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
                 
@@ -549,10 +552,11 @@ const Settings = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`badge text-xs ${
+                      u.role === 'admin' ? 'bg-red-100 text-red-700' :
                       u.role === 'autista' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                     }`}>
                       <Shield size={12} className="inline mr-1" />
-                      {u.role === 'autista' ? 'Autista' : 'Cliente'}
+                      {u.role === 'admin' ? 'Admin' : u.role === 'autista' ? 'Autista' : 'Cliente'}
                     </span>
                     <select
                       value={u.role || 'cliente'}
@@ -561,6 +565,7 @@ const Settings = () => {
                     >
                       <option value="cliente">Cliente</option>
                       <option value="autista">Autista</option>
+                      <option value="admin">Admin</option>
                     </select>
                   </div>
                 </div>

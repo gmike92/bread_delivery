@@ -5,7 +5,7 @@ import {
   onAuthStateChanged 
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
-import { getUserProfile, createUserProfile, getCustomerByUserId, getCustomerByEmail, addCustomer, updateCustomer } from '../firebase/firestore';
+import { getUserProfile, createUserProfile, updateUserProfile, getCustomerByUserId, getCustomerByEmail, addCustomer, updateCustomer } from '../firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -61,6 +61,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Admin email - this user gets automatic admin role
+  const ADMIN_EMAIL = 'michele.guizzardi@gmail.com';
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -68,9 +71,14 @@ export const AuthProvider = ({ children }) => {
         // Get or create user profile
         let profile = await getUserProfile(firebaseUser.uid);
         if (!profile) {
-          // Create default profile as 'autista' for existing users
-          await createUserProfile(firebaseUser.uid, firebaseUser.email, 'autista');
+          // Check if this is the admin email
+          const defaultRole = firebaseUser.email === ADMIN_EMAIL ? 'admin' : 'autista';
+          await createUserProfile(firebaseUser.uid, firebaseUser.email, defaultRole);
           profile = await getUserProfile(firebaseUser.uid);
+        } else if (firebaseUser.email === ADMIN_EMAIL && profile.role !== 'admin') {
+          // Upgrade to admin if this is the admin email
+          await updateUserProfile(firebaseUser.uid, { role: 'admin' });
+          profile = { ...profile, role: 'admin' };
         }
         setUserProfile(profile);
         
@@ -94,8 +102,14 @@ export const AuthProvider = ({ children }) => {
       // Get user profile
       let profile = await getUserProfile(result.user.uid);
       if (!profile) {
-        await createUserProfile(result.user.uid, email, 'autista');
+        // Check if this is the admin email
+        const defaultRole = email === ADMIN_EMAIL ? 'admin' : 'autista';
+        await createUserProfile(result.user.uid, email, defaultRole);
         profile = await getUserProfile(result.user.uid);
+      } else if (email === ADMIN_EMAIL && profile.role !== 'admin') {
+        // Upgrade to admin if this is the admin email
+        await updateUserProfile(result.user.uid, { role: 'admin' });
+        profile = { ...profile, role: 'admin' };
       }
       setUserProfile(profile);
       
@@ -130,7 +144,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isCliente = userProfile?.role === 'cliente';
-  const isAutista = userProfile?.role === 'autista';
+  const isAutista = userProfile?.role === 'autista' || userProfile?.role === 'admin';
+  const isAdmin = userProfile?.role === 'admin';
 
   const value = {
     user,
@@ -142,6 +157,7 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     isCliente,
     isAutista,
+    isAdmin,
     role: userProfile?.role || null
   };
 

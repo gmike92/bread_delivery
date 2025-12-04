@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
+  Plus, 
+  Trash2, 
   Save, 
   Loader2,
   Calendar,
@@ -11,7 +13,10 @@ import {
   ShoppingBag,
   AlertCircle
 } from 'lucide-react';
-import { getCustomers, getProducts, addDelivery, getOrdersByDate, getDeliveriesByDate, calculateDeliveryProgress, seedDefaultProducts } from '../firebase/firestore';
+import { useAuth } from '../context/AuthContext';
+import { getCustomers, getProducts, addDelivery, addProduct, getOrdersByDate, getDeliveriesByDate, calculateDeliveryProgress, seedDefaultProducts } from '../firebase/firestore';
+
+const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
 // Default products that are always shown (fixed kg unit)
 const DEFAULT_PRODUCTS = [
@@ -25,6 +30,7 @@ const DEFAULT_PRODUCTS = [
 
 const NewDelivery = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,12 +42,16 @@ const NewDelivery = () => {
     DEFAULT_PRODUCTS.map(p => ({ product: p.name, quantity: '', unit: p.unit }))
   );
   
+  // Extra items can be added
+  const [extraItems, setExtraItems] = useState([]);
 
   const [formData, setFormData] = useState({
     customerId: '',
     date: new Date().toISOString().split('T')[0]
   });
 
+  const [newProductName, setNewProductName] = useState('');
+  const [showAddProduct, setShowAddProduct] = useState(false);
   const [customerOrder, setCustomerOrder] = useState(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
 
@@ -111,6 +121,42 @@ const NewDelivery = () => {
     setDefaultItems(newItems);
   };
 
+  const addExtraItem = () => {
+    setExtraItems([...extraItems, { product: '', quantity: '', unit: 'kg' }]);
+  };
+
+  const removeExtraItem = (index) => {
+    setExtraItems(extraItems.filter((_, i) => i !== index));
+  };
+
+  const updateExtraItem = (index, field, value) => {
+    const newItems = [...extraItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    
+    if (field === 'product' && value) {
+      const selectedProduct = products.find(p => p.name === value);
+      if (selectedProduct?.defaultUnit) {
+        newItems[index].unit = selectedProduct.defaultUnit;
+      }
+    }
+    
+    setExtraItems(newItems);
+  };
+
+  // Only admin can create new products
+  const handleAddProduct = async () => {
+    if (!newProductName.trim() || !isAdmin) return;
+    
+    try {
+      await addProduct({ name: newProductName.trim(), defaultUnit: 'kg' });
+      setProducts([...products, { name: newProductName.trim(), defaultUnit: 'kg' }]);
+      setNewProductName('');
+      setShowAddProduct(false);
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
+  };
+
   // Get order info for a specific product
   const getOrderInfo = (productName) => {
     if (!customerOrder?.items) return null;
@@ -136,8 +182,11 @@ const NewDelivery = () => {
       return;
     }
     
-    // Filter only items with quantity
-    const allItems = defaultItems.filter(item => item.quantity && parseFloat(item.quantity) > 0);
+    // Combine default and extra items, filter only those with quantity
+    const allItems = [
+      ...defaultItems.filter(item => item.quantity && parseFloat(item.quantity) > 0),
+      ...extraItems.filter(item => item.product && item.quantity && parseFloat(item.quantity) > 0)
+    ];
     
     if (allItems.length === 0) {
       alert('Inserisci almeno una quantità');
@@ -193,6 +242,11 @@ const NewDelivery = () => {
       </div>
     );
   }
+
+  // Get non-default products for extra items dropdown
+  const extraProductOptions = products.filter(
+    p => !DEFAULT_PRODUCTS.some(dp => dp.name === p.name)
+  );
 
   return (
     <div className="page-container pb-32">
@@ -340,6 +394,121 @@ const NewDelivery = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* Extra Products */}
+        <div className="animate-slide-up stagger-4">
+          <div className="flex items-center justify-between mb-3">
+            <label className="label mb-0">
+              <Plus className="inline mr-2" size={18} />
+              Altri Prodotti
+            </label>
+            {/* Only admin can create new products */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowAddProduct(true)}
+                className="text-bread-600 text-xs font-medium"
+              >
+                + Nuovo Prodotto
+              </button>
+            )}
+          </div>
+
+          {/* Add Product Modal - Only for Admin */}
+          {showAddProduct && isAdmin && (
+            <div className="card mb-4 border-2 border-bread-400 animate-fade-in">
+              <label className="label">Aggiungi Nuovo Prodotto</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newProductName}
+                  onChange={(e) => setNewProductName(e.target.value)}
+                  placeholder="Nome prodotto"
+                  className="input-field flex-1"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={handleAddProduct}
+                  className="btn-icon bg-bread-600 text-white"
+                >
+                  <Check size={20} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddProduct(false);
+                    setNewProductName('');
+                  }}
+                  className="btn-icon"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Extra Items */}
+          {extraItems.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {extraItems.map((item, index) => (
+                <div key={index} className="card !p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="badge text-xs bg-blue-100 text-blue-700">Extra</span>
+                    <button
+                      type="button"
+                      onClick={() => removeExtraItem(index)}
+                      className="ml-auto text-red-500 p-1"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <select
+                      value={item.product}
+                      onChange={(e) => updateExtraItem(index, 'product', e.target.value)}
+                      className="select-field flex-1 !py-2 text-sm"
+                    >
+                      <option value="">Prodotto...</option>
+                      {extraProductOptions.map(product => (
+                        <option key={product.id || product.name} value={product.name}>
+                          {product.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateExtraItem(index, 'quantity', e.target.value)}
+                      placeholder="Qtà"
+                      className="w-20 input-field !py-2 text-center"
+                      min="0"
+                      step="0.1"
+                    />
+                    <select
+                      value={item.unit}
+                      onChange={(e) => updateExtraItem(index, 'unit', e.target.value)}
+                      className="select-field w-24 !py-2 text-sm"
+                    >
+                      {UNITS.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addExtraItem}
+            className="btn-secondary !py-3"
+          >
+            <Plus size={20} />
+            Aggiungi Altro Prodotto
+          </button>
         </div>
 
         {/* Submit Button */}
