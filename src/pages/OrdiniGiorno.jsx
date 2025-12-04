@@ -81,6 +81,160 @@ const OrdiniGiorno = () => {
     }
   };
 
+  // Print delivery slip (bolla di consegna) for a single customer
+  const printDeliverySlip = (order) => {
+    const printWindow = window.open('', '_blank');
+    const today = new Date().toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Bolla Consegna - ${order.customerName}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              padding: 15px;
+              max-width: 400px;
+              margin: 0 auto;
+              font-size: 14px;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #333;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
+            }
+            .logo { font-size: 24px; margin-bottom: 5px; }
+            .title { font-size: 18px; font-weight: bold; color: #333; }
+            .subtitle { font-size: 12px; color: #666; }
+            .info-section {
+              margin-bottom: 15px;
+              padding: 10px;
+              background: #f5f5f5;
+              border-radius: 5px;
+            }
+            .info-row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 5px;
+            }
+            .info-label { color: #666; font-size: 12px; }
+            .info-value { font-weight: bold; }
+            .products-title {
+              font-weight: bold;
+              margin-bottom: 10px;
+              padding-bottom: 5px;
+              border-bottom: 1px solid #ddd;
+            }
+            .product-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px dotted #ddd;
+            }
+            .product-name { flex: 1; }
+            .product-qty { 
+              font-weight: bold; 
+              min-width: 80px; 
+              text-align: right;
+            }
+            .notes-section {
+              margin-top: 15px;
+              padding: 10px;
+              background: #fff8dc;
+              border-radius: 5px;
+              border: 1px solid #deb887;
+            }
+            .signature-section {
+              margin-top: 20px;
+              padding-top: 15px;
+              border-top: 2px solid #333;
+            }
+            .signature-line {
+              margin-top: 40px;
+              border-top: 1px solid #333;
+              padding-top: 5px;
+              font-size: 11px;
+              color: #666;
+            }
+            .footer {
+              margin-top: 20px;
+              text-align: center;
+              font-size: 10px;
+              color: #999;
+            }
+            @media print {
+              body { padding: 10px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">🍞</div>
+            <div class="title">BOLLA DI CONSEGNA</div>
+            <div class="subtitle">Panetteria</div>
+          </div>
+          
+          <div class="info-section">
+            <div class="info-row">
+              <span class="info-label">Cliente:</span>
+              <span class="info-value">${order.customerName}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Data Consegna:</span>
+              <span class="info-value">${formatDisplayDate(selectedDate)}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">N° Ordine:</span>
+              <span class="info-value">#${order.id.slice(-6).toUpperCase()}</span>
+            </div>
+          </div>
+          
+          <div class="products-title">📦 Prodotti da Consegnare</div>
+          ${order.items?.map(item => `
+            <div class="product-row">
+              <span class="product-name">${item.product}</span>
+              <span class="product-qty">${item.ordered || item.quantity} ${item.unit}</span>
+            </div>
+          `).join('')}
+          
+          ${order.notes ? `
+            <div class="notes-section">
+              <strong>📝 Note:</strong><br>
+              ${order.notes}
+            </div>
+          ` : ''}
+          
+          <div class="signature-section">
+            <strong>Firma per ricevuta:</strong>
+            <div class="signature-line">
+              Data: _________________ Firma: _________________
+            </div>
+          </div>
+          
+          <div class="footer">
+            Stampato il ${today}
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handlePrint = () => {
     const printContent = printRef.current;
     const printWindow = window.open('', '_blank');
@@ -433,6 +587,15 @@ const OrdiniGiorno = () => {
                 )}
 
                 <div className="flex gap-2">
+                  {/* Print Delivery Slip Button */}
+                  <button
+                    onClick={() => printDeliverySlip(order)}
+                    className="py-2 px-3 bg-blue-100 text-blue-700 rounded-bread font-medium flex items-center justify-center gap-1"
+                    title="Stampa Bolla"
+                  >
+                    <Printer size={18} />
+                  </button>
+                  
                   {order.status === 'pending' && (
                     <button
                       onClick={() => handleStatusChange(order.id, 'confirmed')}
@@ -448,7 +611,7 @@ const OrdiniGiorno = () => {
                       className="flex-1 py-2 px-4 bg-bread-100 text-bread-700 rounded-bread font-medium flex items-center justify-center gap-2"
                     >
                       <Package size={18} />
-                      Segna Consegnato
+                      Consegnato
                     </button>
                   )}
                   {order.status !== 'delivered' && !order.isComplete && (
