@@ -300,6 +300,14 @@ export const getUserProfile = async (userId) => {
   return null;
 };
 
+export const updateUserProfile = async (userId, data) => {
+  const docRef = doc(db, 'users', userId);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now()
+  });
+};
+
 export const getAllUsers = async () => {
   const querySnapshot = await getDocs(
     query(collection(db, 'users'), orderBy('name'))
