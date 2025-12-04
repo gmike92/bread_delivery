@@ -17,6 +17,16 @@ import { getCustomers, getProducts, addDelivery, addProduct, getOrdersByDate, ge
 
 const UNITS = ['kg', 'pezzi', 'scatole', 'filoni', 'dozzine'];
 
+// Default products that are always shown (fixed kg unit)
+const DEFAULT_PRODUCTS = [
+  { name: 'Pane Comune', unit: 'kg' },
+  { name: 'Pane Speciale', unit: 'kg' },
+  { name: 'Pane di Segale', unit: 'kg' },
+  { name: 'Segalini', unit: 'kg' },
+  { name: 'Pizza', unit: 'kg' },
+  { name: 'Focaccia', unit: 'kg' }
+];
+
 const NewDelivery = () => {
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
@@ -25,10 +35,17 @@ const NewDelivery = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Default items are always shown
+  const [defaultItems, setDefaultItems] = useState(
+    DEFAULT_PRODUCTS.map(p => ({ product: p.name, quantity: '', unit: p.unit }))
+  );
+  
+  // Extra items can be added
+  const [extraItems, setExtraItems] = useState([]);
+
   const [formData, setFormData] = useState({
     customerId: '',
-    date: new Date().toISOString().split('T')[0],
-    items: [{ product: '', quantity: '', unit: 'kg' }]
+    date: new Date().toISOString().split('T')[0]
   });
 
   const [newProductName, setNewProductName] = useState('');
@@ -96,24 +113,24 @@ const NewDelivery = () => {
     loadCustomerOrder();
   }, [formData.customerId, formData.date]);
 
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [...formData.items, { product: '', quantity: '', unit: 'kg' }]
-    });
+  const updateDefaultItem = (index, quantity) => {
+    const newItems = [...defaultItems];
+    newItems[index] = { ...newItems[index], quantity };
+    setDefaultItems(newItems);
   };
 
-  const removeItem = (index) => {
-    if (formData.items.length === 1) return;
-    const newItems = formData.items.filter((_, i) => i !== index);
-    setFormData({ ...formData, items: newItems });
+  const addExtraItem = () => {
+    setExtraItems([...extraItems, { product: '', quantity: '', unit: 'kg' }]);
   };
 
-  const updateItem = (index, field, value) => {
-    const newItems = [...formData.items];
+  const removeExtraItem = (index) => {
+    setExtraItems(extraItems.filter((_, i) => i !== index));
+  };
+
+  const updateExtraItem = (index, field, value) => {
+    const newItems = [...extraItems];
     newItems[index] = { ...newItems[index], [field]: value };
     
-    // Auto-set unit based on product selection
     if (field === 'product' && value) {
       const selectedProduct = products.find(p => p.name === value);
       if (selectedProduct?.defaultUnit) {
@@ -121,7 +138,7 @@ const NewDelivery = () => {
       }
     }
     
-    setFormData({ ...formData, items: newItems });
+    setExtraItems(newItems);
   };
 
   const handleAddProduct = async () => {
@@ -137,41 +154,52 @@ const NewDelivery = () => {
     }
   };
 
+  // Get order info for a specific product
+  const getOrderInfo = (productName) => {
+    if (!customerOrder?.items) return null;
+    return customerOrder.items.find(item => item.product === productName);
+  };
+
+  // Quick fill from order
+  const fillFromOrder = (productName, index) => {
+    const orderInfo = getOrderInfo(productName);
+    if (orderInfo) {
+      const remaining = orderInfo.ordered - orderInfo.delivered;
+      if (remaining > 0) {
+        updateDefaultItem(index, remaining.toString());
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate
     if (!formData.customerId) {
       alert('Seleziona un cliente');
       return;
     }
     
-    const validItems = formData.items.filter(
-      item => item.product && item.quantity && parseFloat(item.quantity) > 0
-    );
+    // Combine default and extra items, filter only those with quantity
+    const allItems = [
+      ...defaultItems.filter(item => item.quantity && parseFloat(item.quantity) > 0),
+      ...extraItems.filter(item => item.product && item.quantity && parseFloat(item.quantity) > 0)
+    ];
     
-    if (validItems.length === 0) {
-      alert('Aggiungi almeno un prodotto');
+    if (allItems.length === 0) {
+      alert('Inserisci almeno una quantità');
       return;
     }
 
     setSaving(true);
     try {
-      // Build product price map for billing
-      const productPrices = {};
-      products.forEach(p => {
-        productPrices[p.name] = p.price || 0;
-      });
-      
       await addDelivery({
         customerId: formData.customerId,
         customerName: customers.find(c => c.id === formData.customerId)?.name || '',
         date: formData.date,
-        items: validItems.map(item => ({
+        items: allItems.map(item => ({
           product: item.product,
           quantity: parseFloat(item.quantity),
-          unit: item.unit,
-          priceAtDelivery: productPrices[item.product] || 0 // Save price at time of delivery for billing
+          unit: item.unit
         }))
       });
       
@@ -198,7 +226,6 @@ const NewDelivery = () => {
     );
   }
 
-  // Success State
   if (saved) {
     return (
       <div className="page-container flex flex-col items-center justify-center min-h-screen animate-fade-in">
@@ -212,6 +239,11 @@ const NewDelivery = () => {
       </div>
     );
   }
+
+  // Get non-default products for extra items dropdown
+  const extraProductOptions = products.filter(
+    p => !DEFAULT_PRODUCTS.some(dp => dp.name === p.name)
+  );
 
   return (
     <div className="page-container pb-32">
@@ -228,7 +260,7 @@ const NewDelivery = () => {
         <div className="card animate-slide-up stagger-1">
           <label className="label">
             <User className="inline mr-2" size={18} />
-            Seleziona Cliente *
+            Cliente *
           </label>
           <select
             value={formData.customerId}
@@ -249,7 +281,7 @@ const NewDelivery = () => {
         <div className="card animate-slide-up stagger-2">
           <label className="label">
             <Calendar className="inline mr-2" size={18} />
-            Data Consegna
+            Data
           </label>
           <input
             type="date"
@@ -262,117 +294,120 @@ const NewDelivery = () => {
         {/* Customer Order Info */}
         {loadingOrder && (
           <div className="card animate-fade-in border-2 border-bread-200">
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="animate-spin text-bread-500" size={24} />
-              <span className="ml-2 text-bread-600">Caricamento ordine...</span>
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="animate-spin text-bread-500" size={20} />
+              <span className="ml-2 text-bread-600 text-sm">Caricamento ordine...</span>
             </div>
           </div>
         )}
 
         {customerOrder && !loadingOrder && (
           <div className={`card animate-fade-in border-2 ${customerOrder.isComplete ? 'border-green-300 bg-green-50' : 'border-amber-300 bg-amber-50'}`}>
-            <div className="flex items-center gap-2 mb-3">
-              <ShoppingBag size={20} className={customerOrder.isComplete ? 'text-green-600' : 'text-amber-600'} />
-              <h3 className="font-semibold text-bread-800">
-                Ordine del Cliente
-              </h3>
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag size={18} className={customerOrder.isComplete ? 'text-green-600' : 'text-amber-600'} />
+              <span className="font-semibold text-bread-800 text-sm">Ordine Cliente</span>
               {customerOrder.isComplete && (
                 <span className="badge bg-green-100 text-green-700 text-xs ml-auto">
-                  <Check size={12} className="inline mr-1" />
-                  Completato
+                  <Check size={12} className="inline" /> Completo
                 </span>
               )}
             </div>
-            
-            <div className="space-y-2">
-              {customerOrder.items?.map((item, i) => {
-                const remaining = item.ordered - item.delivered;
-                return (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-bread-200 last:border-0">
-                    <div className="flex-1">
-                      <span className="text-bread-700 font-medium">{item.product}</span>
-                      <div className={`text-sm ${
-                        item.isComplete ? 'text-green-600' : 
-                        item.delivered > 0 ? 'text-amber-600' : 'text-bread-500'
-                      }`}>
-                        {item.delivered}/{item.ordered} {item.unit}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {item.isComplete ? (
-                        <span className="badge bg-green-100 text-green-700 text-xs">
-                          <Check size={12} className="inline" /> OK
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Pre-fill with remaining quantity
-                            const newItem = { 
-                              product: item.product, 
-                              quantity: remaining.toString(), 
-                              unit: item.unit 
-                            };
-                            // Check if product already in form
-                            const existingIndex = formData.items.findIndex(
-                              fi => fi.product === item.product && !fi.quantity
-                            );
-                            if (existingIndex >= 0) {
-                              updateItem(existingIndex, 'quantity', remaining.toString());
-                            } else {
-                              setFormData({
-                                ...formData,
-                                items: [...formData.items.filter(fi => fi.product || fi.quantity), newItem]
-                              });
-                            }
-                          }}
-                          className="px-3 py-1 bg-bread-600 text-white rounded-bread text-sm font-medium hover:bg-bread-700 transition-colors"
-                        >
-                          +{remaining} {item.unit}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {!customerOrder.isComplete && (
-              <p className="text-xs text-amber-700 mt-3">
-                💡 Tocca i pulsanti per aggiungere rapidamente le quantità mancanti
-              </p>
-            )}
+            <p className="text-xs text-amber-700">
+              💡 Tocca i valori sotto per riempire automaticamente
+            </p>
           </div>
         )}
 
         {formData.customerId && !customerOrder && !loadingOrder && (
-          <div className="card animate-fade-in border-2 border-gray-200 bg-gray-50">
+          <div className="card animate-fade-in border-2 border-gray-200 bg-gray-50 !py-3">
             <div className="flex items-center gap-2 text-gray-600">
-              <AlertCircle size={20} />
-              <span className="text-sm">Nessun ordine per questo cliente in questa data</span>
+              <AlertCircle size={18} />
+              <span className="text-sm">Nessun ordine per questa data</span>
             </div>
           </div>
         )}
 
-        {/* Products List */}
-        <div className="animate-slide-up stagger-3">
-          <div className="flex items-center justify-between mb-2">
+        {/* Default Products - Compact Single Line Layout */}
+        <div className="card animate-slide-up stagger-3">
+          <label className="label mb-4">
+            <Package className="inline mr-2" size={18} />
+            Prodotti
+          </label>
+
+          <div className="space-y-3">
+            {defaultItems.map((item, index) => {
+              const orderInfo = getOrderInfo(item.product);
+              const hasOrder = orderInfo && orderInfo.ordered > 0;
+              const remaining = hasOrder ? orderInfo.ordered - orderInfo.delivered : 0;
+              const isComplete = hasOrder && orderInfo.isComplete;
+              
+              return (
+                <div 
+                  key={index} 
+                  className={`flex items-center gap-3 py-2 px-3 rounded-bread ${
+                    hasOrder 
+                      ? isComplete 
+                        ? 'bg-green-50 border border-green-200' 
+                        : 'bg-amber-50 border border-amber-200'
+                      : 'bg-bread-50 border border-bread-100'
+                  }`}
+                >
+                  {/* Product Name */}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-bread-800 text-sm truncate block">
+                      {item.product}
+                    </span>
+                    {hasOrder && (
+                      <button
+                        type="button"
+                        onClick={() => fillFromOrder(item.product, index)}
+                        className={`text-xs ${
+                          isComplete ? 'text-green-600' : 'text-amber-600 underline'
+                        }`}
+                      >
+                        {isComplete ? (
+                          <><Check size={10} className="inline" /> {orderInfo.delivered}/{orderInfo.ordered}</>
+                        ) : (
+                          <>Ord: {orderInfo.ordered} • Manca: {remaining}</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Quantity Input */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateDefaultItem(index, e.target.value)}
+                      placeholder="0"
+                      className="w-20 h-12 text-center text-lg font-bold border-2 border-bread-200 rounded-bread focus:border-bread-500 focus:outline-none"
+                      min="0"
+                      step="0.1"
+                    />
+                    <span className="text-bread-500 font-medium w-8">kg</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Extra Products */}
+        <div className="animate-slide-up stagger-4">
+          <div className="flex items-center justify-between mb-3">
             <label className="label mb-0">
-              <Package className="inline mr-2" size={18} />
-              Prodotti da Consegnare *
+              <Plus className="inline mr-2" size={18} />
+              Altri Prodotti
             </label>
             <button
               type="button"
               onClick={() => setShowAddProduct(true)}
-              className="text-bread-600 text-sm font-medium flex items-center gap-1"
+              className="text-bread-600 text-xs font-medium"
             >
-              <Plus size={16} />
-              Nuovo Prodotto
+              + Nuovo Prodotto
             </button>
           </div>
-          <p className="text-xs text-bread-500 mb-4">
-            Puoi aggiungere sia prodotti ordinati che prodotti extra
-          </p>
 
           {/* Add Product Modal */}
           {showAddProduct && (
@@ -408,117 +443,65 @@ const NewDelivery = () => {
             </div>
           )}
 
-          {/* Product Items */}
-          <div className="space-y-4">
-            {formData.items.map((item, index) => {
-              // Check if this product is in the customer's order
-              const isOrderedItem = customerOrder?.items?.some(
-                oi => oi.product === item.product
-              );
-              const orderedItem = customerOrder?.items?.find(
-                oi => oi.product === item.product
-              );
-              
-              return (
-              <div key={index} className={`card ${isOrderedItem ? 'border-l-4 border-l-bread-500' : ''}`}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="badge">Articolo {index + 1}</span>
-                    {isOrderedItem && (
-                      <span className="badge bg-bread-100 text-bread-700 text-xs">
-                        <ShoppingBag size={12} className="inline mr-1" />
-                        Ordinato
-                      </span>
-                    )}
-                    {item.product && !isOrderedItem && customerOrder && (
-                      <span className="badge bg-blue-100 text-blue-700 text-xs">
-                        <Plus size={12} className="inline mr-1" />
-                        Extra
-                      </span>
-                    )}
-                  </div>
-                  {formData.items.length > 1 && (
+          {/* Extra Items */}
+          {extraItems.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {extraItems.map((item, index) => (
+                <div key={index} className="card !p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="badge text-xs bg-blue-100 text-blue-700">Extra</span>
                     <button
                       type="button"
-                      onClick={() => removeItem(index)}
-                      className="text-red-500 p-2"
+                      onClick={() => removeExtraItem(index)}
+                      className="ml-auto text-red-500 p-1"
                     >
-                      <Trash2 size={20} />
+                      <Trash2 size={16} />
                     </button>
-                  )}
-                </div>
-                
-                {/* Show order info if this is an ordered item */}
-                {isOrderedItem && orderedItem && (
-                  <div className="mb-3 p-2 bg-bread-50 rounded-bread text-sm">
-                    <span className="text-bread-600">Ordinato: </span>
-                    <span className="font-semibold text-bread-800">
-                      {orderedItem.ordered} {orderedItem.unit}
-                    </span>
-                    <span className="text-bread-500"> • Già consegnato: </span>
-                    <span className="font-semibold text-bread-800">
-                      {orderedItem.delivered} {orderedItem.unit}
-                    </span>
                   </div>
-                )}
-
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm text-bread-600 mb-1 block">Prodotto</label>
+                  <div className="flex gap-2">
                     <select
                       value={item.product}
-                      onChange={(e) => updateItem(index, 'product', e.target.value)}
-                      className="select-field"
+                      onChange={(e) => updateExtraItem(index, 'product', e.target.value)}
+                      className="select-field flex-1 !py-2 text-sm"
                     >
-                      <option value="">Seleziona prodotto...</option>
-                      {products.map(product => (
+                      <option value="">Prodotto...</option>
+                      {extraProductOptions.map(product => (
                         <option key={product.id || product.name} value={product.name}>
                           {product.name}
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm text-bread-600 mb-1 block">Quantità</label>
-                      <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                        placeholder="0"
-                        className="input-field text-center text-xl font-semibold"
-                        min="0"
-                        step="0.1"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-bread-600 mb-1 block">Unità</label>
-                      <select
-                        value={item.unit}
-                        onChange={(e) => updateItem(index, 'unit', e.target.value)}
-                        className="select-field"
-                      >
-                        {UNITS.map(unit => (
-                          <option key={unit} value={unit}>{unit}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateExtraItem(index, 'quantity', e.target.value)}
+                      placeholder="Qtà"
+                      className="w-20 input-field !py-2 text-center"
+                      min="0"
+                      step="0.1"
+                    />
+                    <select
+                      value={item.unit}
+                      onChange={(e) => updateExtraItem(index, 'unit', e.target.value)}
+                      className="select-field w-24 !py-2 text-sm"
+                    >
+                      {UNITS.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              </div>
-            );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {/* Add Item Button */}
           <button
             type="button"
-            onClick={addItem}
-            className="btn-secondary mt-4"
+            onClick={addExtraItem}
+            className="btn-secondary !py-3"
           >
-            <Plus size={24} />
-            Aggiungi Altro Articolo
+            <Plus size={20} />
+            Aggiungi Altro Prodotto
           </button>
         </div>
 
@@ -548,4 +531,3 @@ const NewDelivery = () => {
 };
 
 export default NewDelivery;
-
