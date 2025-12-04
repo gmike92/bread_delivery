@@ -511,12 +511,12 @@ export const calculateDeliveryProgress = (orders, deliveries) => {
 
 export const seedDefaultProducts = async (forceAdd = false) => {
   const defaultProducts = [
-    { name: 'Pane Comune', defaultUnit: 'kg' },
-    { name: 'Pane Speciale', defaultUnit: 'kg' },
-    { name: 'Pane di Segale', defaultUnit: 'kg' },
-    { name: 'Segalini', defaultUnit: 'kg' },
-    { name: 'Focaccia', defaultUnit: 'kg' },
-    { name: 'Pizza', defaultUnit: 'kg' }
+    { name: 'Pane Comune', defaultUnit: 'kg', price: 3.50 },
+    { name: 'Pane Speciale', defaultUnit: 'kg', price: 4.50 },
+    { name: 'Pane di Segale', defaultUnit: 'kg', price: 5.00 },
+    { name: 'Segalini', defaultUnit: 'kg', price: 5.50 },
+    { name: 'Focaccia', defaultUnit: 'kg', price: 6.00 },
+    { name: 'Pizza', defaultUnit: 'kg', price: 7.00 }
   ];
   
   const existingProducts = await getProducts();
@@ -533,5 +533,231 @@ export const seedDefaultProducts = async (forceAdd = false) => {
   }
   
   return await getProducts();
+};
+
+// ============ PAYMENTS ============
+
+export const getPayments = async (customerId = null) => {
+  let q;
+  if (customerId) {
+    q = query(
+      collection(db, 'payments'),
+      where('customerId', '==', customerId),
+      orderBy('date', 'desc')
+    );
+  } else {
+    q = query(collection(db, 'payments'), orderBy('date', 'desc'));
+  }
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+export const addPayment = async (paymentData) => {
+  const docRef = await addDoc(collection(db, 'payments'), {
+    ...paymentData,
+    createdAt: Timestamp.now()
+  });
+  return docRef.id;
+};
+
+export const deletePayment = async (id) => {
+  const docRef = doc(db, 'payments', id);
+  await deleteDoc(docRef);
+};
+
+// ============ BILLING / CONTABILITÀ ============
+
+// Get all deliveries for a customer in a date range
+export const getDeliveriesForBilling = async (customerId, startDate, endDate) => {
+  const start = Timestamp.fromDate(new Date(startDate + 'T00:00:00'));
+  const end = Timestamp.fromDate(new Date(endDate + 'T23:59:59'));
+  
+  const q = query(
+    collection(db, 'deliveries'),
+    where('customerId', '==', customerId),
+    where('date', '>=', start),
+    where('date', '<=', end)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+// Get payments for a customer in a date range
+export const getPaymentsForBilling = async (customerId, startDate, endDate) => {
+  const start = Timestamp.fromDate(new Date(startDate + 'T00:00:00'));
+  const end = Timestamp.fromDate(new Date(endDate + 'T23:59:59'));
+  
+  const q = query(
+    collection(db, 'payments'),
+    where('customerId', '==', customerId),
+    where('date', '>=', start),
+    where('date', '<=', end)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+// Calculate customer balance (all time)
+export const calculateCustomerBalance = async (customerId) => {
+  // Get all deliveries
+  const deliveriesQuery = query(
+    collection(db, 'deliveries'),
+    where('customerId', '==', customerId)
+  );
+  const deliveriesSnapshot = await getDocs(deliveriesQuery);
+  
+  let totalDue = 0;
+  deliveriesSnapshot.docs.forEach(doc => {
+    const delivery = doc.data();
+    if (delivery.items) {
+      delivery.items.forEach(item => {
+        const price = item.priceAtDelivery || item.price || 0;
+        totalDue += (item.quantity || 0) * price;
+      });
+    }
+  });
+  
+  // Get all payments
+  const paymentsQuery = query(
+    collection(db, 'payments'),
+    where('customerId', '==', customerId)
+  );
+  const paymentsSnapshot = await getDocs(paymentsQuery);
+  
+  let totalPaid = 0;
+  paymentsSnapshot.docs.forEach(doc => {
+    const payment = doc.data();
+    totalPaid += payment.amount || 0;
+  });
+  
+  return {
+    totalDue: Math.round(totalDue * 100) / 100,
+    totalPaid: Math.round(totalPaid * 100) / 100,
+    balance: Math.round((totalDue - totalPaid) * 100) / 100
+  };
+};
+
+// Generate billing statement for a period
+export const generateBillingStatement = async (customerId, startDate, endDate) => {
+  const customer = await getCustomer(customerId);
+  const deliveries = await getDeliveriesForBilling(customerId, startDate, endDate);
+  const payments = await getPaymentsForBilling(customerId, startDate, endDate);
+  const products = await getProducts();
+  
+  // Build product price map
+  const productPrices = {};
+  products.forEach(p => {
+    productPrices[p.name] = p.price || 0;
+  });
+  
+  // Calculate totals from deliveries
+  let periodTotal = 0;
+  const deliveryDetails = deliveries.map(d => {
+    const date = d.date?.toDate ? d.date.toDate() : new Date(d.date);
+    let deliveryTotal = 0;
+    
+    const itemsWithPrices = (d.items || []).map(item => {
+      const price = item.priceAtDelivery || item.price || productPrices[item.product] || 0;
+      const lineTotal = (item.quantity || 0) * price;
+      deliveryTotal += lineTotal;
+      
+      return {
+        ...item,
+        price,
+        lineTotal: Math.round(lineTotal * 100) / 100
+      };
+    });
+    
+    periodTotal += deliveryTotal;
+    
+    return {
+      id: d.id,
+      date,
+      items: itemsWithPrices,
+      total: Math.round(deliveryTotal * 100) / 100
+    };
+  });
+  
+  // Calculate payments in period
+  let periodPayments = 0;
+  const paymentDetails = payments.map(p => {
+    const date = p.date?.toDate ? p.date.toDate() : new Date(p.date);
+    periodPayments += p.amount || 0;
+    
+    return {
+      id: p.id,
+      date,
+      amount: p.amount,
+      method: p.method,
+      notes: p.notes
+    };
+  });
+  
+  // Get previous balance (before this period)
+  const previousBalance = await calculatePreviousBalance(customerId, startDate);
+  
+  return {
+    customer,
+    period: { startDate, endDate },
+    deliveries: deliveryDetails.sort((a, b) => a.date - b.date),
+    payments: paymentDetails.sort((a, b) => a.date - b.date),
+    previousBalance: Math.round(previousBalance * 100) / 100,
+    periodTotal: Math.round(periodTotal * 100) / 100,
+    periodPayments: Math.round(periodPayments * 100) / 100,
+    currentBalance: Math.round((previousBalance + periodTotal - periodPayments) * 100) / 100
+  };
+};
+
+// Helper: Calculate balance before a specific date
+const calculatePreviousBalance = async (customerId, beforeDate) => {
+  const endDate = new Date(beforeDate + 'T00:00:00');
+  endDate.setDate(endDate.getDate() - 1);
+  
+  // Get deliveries before the period
+  const deliveriesQuery = query(
+    collection(db, 'deliveries'),
+    where('customerId', '==', customerId),
+    where('date', '<', Timestamp.fromDate(endDate))
+  );
+  const deliveriesSnapshot = await getDocs(deliveriesQuery);
+  
+  let totalDue = 0;
+  deliveriesSnapshot.docs.forEach(doc => {
+    const delivery = doc.data();
+    if (delivery.items) {
+      delivery.items.forEach(item => {
+        const price = item.priceAtDelivery || item.price || 0;
+        totalDue += (item.quantity || 0) * price;
+      });
+    }
+  });
+  
+  // Get payments before the period
+  const paymentsQuery = query(
+    collection(db, 'payments'),
+    where('customerId', '==', customerId),
+    where('date', '<', Timestamp.fromDate(endDate))
+  );
+  const paymentsSnapshot = await getDocs(paymentsQuery);
+  
+  let totalPaid = 0;
+  paymentsSnapshot.docs.forEach(doc => {
+    const payment = doc.data();
+    totalPaid += payment.amount || 0;
+  });
+  
+  return totalDue - totalPaid;
 };
 

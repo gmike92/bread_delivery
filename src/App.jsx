@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import ClienteOrdine from './pages/ClienteOrdine';
 import OrdiniGiorno from './pages/OrdiniGiorno';
+import Contabilita from './pages/Contabilita';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
             <Route path="/delivery" element={<NewDelivery />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/ordini" element={<OrdiniGiorno />} />
+            <Route path="/contabilita" element={<Contabilita />} />
             
             {/* Client Routes */}
             <Route path="/ordine" element={<ClienteOrdine />} />

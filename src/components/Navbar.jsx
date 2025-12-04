@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package } from 'lucide-react';
+import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package, Euro } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
@@ -13,10 +13,10 @@ const Navbar = () => {
   ] : [
     { to: '/', icon: Home, label: 'Home' },
     { to: '/ordini', icon: Package, label: 'Ordini' },
-    { to: '/customers', icon: Users, label: 'Clienti' },
     { to: '/delivery', icon: Truck, label: 'Consegna' },
+    { to: '/contabilita', icon: Euro, label: 'Conti' },
     { to: '/reports', icon: BarChart3, label: 'Report' },
-    { to: '/settings', icon: Settings, label: 'Impost.' },
+    { to: '/settings', icon: Settings, label: 'Altro' },
   ];
 
   return (

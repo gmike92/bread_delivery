@@ -157,6 +157,12 @@ const NewDelivery = () => {
 
     setSaving(true);
     try {
+      // Build product price map for billing
+      const productPrices = {};
+      products.forEach(p => {
+        productPrices[p.name] = p.price || 0;
+      });
+      
       await addDelivery({
         customerId: formData.customerId,
         customerName: customers.find(c => c.id === formData.customerId)?.name || '',
@@ -164,7 +170,8 @@ const NewDelivery = () => {
         items: validItems.map(item => ({
           product: item.product,
           quantity: parseFloat(item.quantity),
-          unit: item.unit
+          unit: item.unit,
+          priceAtDelivery: productPrices[item.product] || 0 // Save price at time of delivery for billing
         }))
       });
       

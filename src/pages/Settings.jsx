@@ -43,7 +43,7 @@ const Settings = () => {
   
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [productForm, setProductForm] = useState({ name: '', defaultUnit: 'kg' });
+  const [productForm, setProductForm] = useState({ name: '', defaultUnit: 'kg', price: '' });
   const [saving, setSaving] = useState(false);
 
   const [showUserForm, setShowUserForm] = useState(false);
@@ -189,13 +189,17 @@ const Settings = () => {
   };
 
   const openAddProduct = () => {
-    setProductForm({ name: '', defaultUnit: 'kg' });
+    setProductForm({ name: '', defaultUnit: 'kg', price: '' });
     setEditingProduct(null);
     setShowProductForm(true);
   };
 
   const openEditProduct = (product) => {
-    setProductForm({ name: product.name, defaultUnit: product.defaultUnit || 'kg' });
+    setProductForm({ 
+      name: product.name, 
+      defaultUnit: product.defaultUnit || 'kg',
+      price: product.price?.toString() || ''
+    });
     setEditingProduct(product);
     setShowProductForm(true);
   };
@@ -203,7 +207,7 @@ const Settings = () => {
   const closeProductForm = () => {
     setShowProductForm(false);
     setEditingProduct(null);
-    setProductForm({ name: '', defaultUnit: 'kg' });
+    setProductForm({ name: '', defaultUnit: 'kg', price: '' });
   };
 
   const handleSaveProduct = async () => {
@@ -211,10 +215,16 @@ const Settings = () => {
 
     setSaving(true);
     try {
+      const dataToSave = {
+        name: productForm.name.trim(),
+        defaultUnit: productForm.defaultUnit,
+        price: productForm.price ? parseFloat(productForm.price) : null
+      };
+      
       if (editingProduct) {
-        await updateProduct(editingProduct.id, productForm);
+        await updateProduct(editingProduct.id, dataToSave);
       } else {
-        await addProduct(productForm);
+        await addProduct(dataToSave);
       }
       await loadProducts();
       closeProductForm();
@@ -342,17 +352,32 @@ const Settings = () => {
                 />
               </div>
               
-              <div>
-                <label className="label">Unità Predefinita</label>
-                <select
-                  value={productForm.defaultUnit}
-                  onChange={(e) => setProductForm({ ...productForm, defaultUnit: e.target.value })}
-                  className="select-field"
-                >
-                  {UNITS.map(unit => (
-                    <option key={unit} value={unit}>{unit}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Unità Predefinita</label>
+                  <select
+                    value={productForm.defaultUnit}
+                    onChange={(e) => setProductForm({ ...productForm, defaultUnit: e.target.value })}
+                    className="select-field"
+                  >
+                    {UNITS.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="label">Prezzo (€/{productForm.defaultUnit})</label>
+                  <input
+                    type="number"
+                    value={productForm.price}
+                    onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
+                    placeholder="0.00"
+                    className="input-field"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
               </div>
               
               <div className="flex gap-2 pt-2">
@@ -401,9 +426,16 @@ const Settings = () => {
                 className="card !p-4 flex items-center justify-between"
                 style={{ animationDelay: `${0.05 * index}s` }}
               >
-                <div>
-                  <span className="font-medium text-bread-800">{product.name}</span>
-                  <span className="badge ml-2 text-xs">{product.defaultUnit}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-bread-800">{product.name}</span>
+                    <span className="badge text-xs">{product.defaultUnit}</span>
+                  </div>
+                  {product.price != null && (
+                    <span className="text-sm text-green-600 font-semibold">
+                      €{product.price.toFixed(2)}/{product.defaultUnit}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
