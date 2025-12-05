@@ -13,7 +13,9 @@ import {
   Loader2,
   ChevronLeft,
   History,
-  Package
+  Package,
+  MessageCircle,
+  Navigation
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../firebase/firestore';
@@ -98,12 +100,13 @@ const Customers = () => {
   };
 
   const handleDelete = async (customer) => {
-    if (window.confirm(`Delete ${customer.name}?`)) {
+    if (window.confirm(`⚠️ Eliminare "${customer.name}"?\n\nQuesta azione non può essere annullata.`)) {
       try {
         await deleteCustomer(customer.id);
         await loadCustomers();
       } catch (error) {
         console.error('Error deleting customer:', error);
+        alert('Errore nell\'eliminazione del cliente');
       }
     }
   };
@@ -254,16 +257,44 @@ const Customers = () => {
                     {customer.name}
                   </h3>
                   {customer.phone && (
-                    <p className="text-bread-600 flex items-center gap-2 mt-1">
-                      <Phone size={16} />
-                      {customer.phone}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Phone size={16} className="text-bread-500" />
+                      <span className="text-bread-600">{customer.phone}</span>
+                      <a
+                        href={`tel:${customer.phone.replace(/\s/g, '')}`}
+                        className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Chiama"
+                      >
+                        <Phone size={14} />
+                      </a>
+                      <a
+                        href={`https://wa.me/${customer.phone.replace(/\s/g, '').replace(/^\+?/, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200"
+                        onClick={(e) => e.stopPropagation()}
+                        title="WhatsApp"
+                      >
+                        <MessageCircle size={14} />
+                      </a>
+                    </div>
                   )}
                   {customer.address && (
-                    <p className="text-bread-500 flex items-start gap-2 mt-1 text-sm">
-                      <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-                      {customer.address}
-                    </p>
+                    <div className="flex items-start gap-2 mt-1">
+                      <MapPin size={16} className="flex-shrink-0 mt-0.5 text-bread-400" />
+                      <span className="text-bread-500 text-sm flex-1">{customer.address}</span>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 flex-shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Apri in Google Maps"
+                      >
+                        <Navigation size={14} />
+                      </a>
+                    </div>
                   )}
                 </div>
                 <div className="flex gap-2 ml-3">

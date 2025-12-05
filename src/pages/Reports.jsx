@@ -103,19 +103,41 @@ const Reports = () => {
     });
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = (type = 'summary') => {
     if (!report) return;
     
-    let csv = 'Prodotto,Quantità,Unità,Numero Consegne\n';
-    report.summary.forEach(item => {
-      csv += `"${item.product}",${item.totalQuantity},${item.unit},${item.deliveryCount}\n`;
-    });
+    let csv = '';
+    let filename = '';
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    if (type === 'summary') {
+      // Export product summary
+      csv = 'Prodotto,Quantità,Unità,Numero Consegne\n';
+      report.summary.forEach(item => {
+        csv += `"${item.product}",${item.totalQuantity},${item.unit},${item.deliveryCount}\n`;
+      });
+      filename = `riepilogo-prodotti-${filters.startDate}-${filters.endDate}.csv`;
+    } else {
+      // Export detailed deliveries
+      csv = 'Data,Cliente,Prodotto,Quantità,Unità\n';
+      report.deliveries.forEach(delivery => {
+        const date = delivery.date?.toDate 
+          ? delivery.date.toDate().toLocaleDateString('it-IT')
+          : new Date(delivery.date).toLocaleDateString('it-IT');
+        
+        delivery.items?.forEach(item => {
+          csv += `"${date}","${delivery.customerName}","${item.product}",${item.quantity},"${item.unit}"\n`;
+        });
+      });
+      filename = `dettaglio-consegne-${filters.startDate}-${filters.endDate}.csv`;
+    }
+    
+    // Add BOM for Excel UTF-8 compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `report-consegne-${filters.startDate}-a-${filters.endDate}.csv`;
+    a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -235,11 +257,23 @@ const Reports = () => {
                 </h3>
                 <p className="text-sm text-bread-500">{report.dateRange}</p>
               </div>
+            </div>
+            
+            {/* Export Buttons */}
+            <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={exportToCSV}
-                className="btn-icon"
+                onClick={() => exportToCSV('summary')}
+                className="py-2 px-3 bg-green-100 text-green-700 rounded-bread font-medium flex items-center justify-center gap-2 text-sm"
               >
-                <Download size={20} />
+                <Download size={16} />
+                Riepilogo CSV
+              </button>
+              <button
+                onClick={() => exportToCSV('details')}
+                className="py-2 px-3 bg-blue-100 text-blue-700 rounded-bread font-medium flex items-center justify-center gap-2 text-sm"
+              >
+                <Download size={16} />
+                Dettaglio CSV
               </button>
             </div>
           </div>

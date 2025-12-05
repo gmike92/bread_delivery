@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Users, Package, BarChart3, Plus, RefreshCw, ShoppingBag, Calendar } from 'lucide-react';
+import { Truck, Users, Package, BarChart3, Plus, RefreshCw, ShoppingBag, Calendar, ChefHat, Printer } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { getTodayDeliveries, getCustomers, calculateDeliverySummary, getOrdersByDate, getOrdersByCustomer } from '../firebase/firestore';
+import { getTodayDeliveries, getCustomers, calculateDeliverySummary, getOrdersByDate, getOrdersByCustomer, calculateOrdersSummary } from '../firebase/firestore';
 
 const Dashboard = () => {
   const { isCliente, user, userProfile } = useAuth();
@@ -12,10 +12,12 @@ const Dashboard = () => {
     totalItems: 0,
     productSummary: [],
     todayOrders: 0,
-    myOrders: []
+    myOrders: [],
+    productionSummary: [] // What needs to be produced today
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showProduction, setShowProduction] = useState(false);
 
   const loadData = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -45,6 +47,9 @@ const Dashboard = () => {
 
         const summary = calculateDeliverySummary(deliveries);
         const totalItems = summary.reduce((acc, item) => acc + item.totalQuantity, 0);
+        
+        // Calculate production summary from orders
+        const productionSummary = calculateOrdersSummary(todayOrders);
 
         setTodayStats({
           deliveryCount: deliveries.length,
@@ -52,7 +57,8 @@ const Dashboard = () => {
           totalItems,
           productSummary: summary.slice(0, 5),
           todayOrders: todayOrders.length,
-          myOrders: []
+          myOrders: [],
+          productionSummary
         });
       }
     } catch (error) {
@@ -73,6 +79,94 @@ const Dashboard = () => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const printProductionList = () => {
+    const printWindow = window.open('', '_blank');
+    const today = new Date().toLocaleDateString('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Lista Produzione - ${today}</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              padding: 20px;
+              max-width: 400px;
+              margin: 0 auto;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #333;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            .logo { font-size: 40px; margin-bottom: 10px; }
+            .title { font-size: 24px; font-weight: bold; }
+            .date { font-size: 14px; color: #666; margin-top: 5px; }
+            .product-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              border-bottom: 1px dashed #ccc;
+              font-size: 18px;
+            }
+            .product-name { font-weight: 500; }
+            .product-qty { font-weight: bold; }
+            .total {
+              margin-top: 20px;
+              padding: 15px;
+              background: #f5f5f5;
+              text-align: center;
+              font-size: 20px;
+              font-weight: bold;
+              border-radius: 8px;
+            }
+            .checkbox {
+              width: 20px;
+              height: 20px;
+              border: 2px solid #333;
+              display: inline-block;
+              margin-right: 10px;
+              vertical-align: middle;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">🍞</div>
+            <div class="title">LISTA PRODUZIONE</div>
+            <div class="date">${today}</div>
+          </div>
+          
+          ${todayStats.productionSummary.map(item => `
+            <div class="product-row">
+              <span class="product-name">
+                <span class="checkbox"></span>
+                ${item.product}
+              </span>
+              <span class="product-qty">${item.totalQuantity.toFixed(1)} ${item.unit}</span>
+            </div>
+          `).join('')}
+          
+          <div class="total">
+            TOTALE: ${todayStats.productionSummary.reduce((sum, p) => sum + p.totalQuantity, 0).toFixed(1)} kg
+          </div>
+          
+          <script>
+            window.onload = function() { window.print(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   if (loading) {
@@ -212,6 +306,52 @@ const Dashboard = () => {
           <RefreshCw size={22} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </div>
+
+      {/* Production Summary Card */}
+      {todayStats.productionSummary.length > 0 && (
+        <div className="mb-6 animate-slide-up stagger-1">
+          <div 
+            className="card bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 cursor-pointer"
+            onClick={() => setShowProduction(!showProduction)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-green-200 rounded-full flex items-center justify-center">
+                <ChefHat size={28} className="text-green-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-green-800">Da Produrre Oggi</h3>
+                <p className="text-2xl font-display font-bold text-green-700">
+                  {todayStats.productionSummary.reduce((sum, p) => sum + p.totalQuantity, 0).toFixed(1)} kg
+                </p>
+              </div>
+              <span className="text-green-600">{showProduction ? '▲' : '▼'}</span>
+            </div>
+            
+            {showProduction && (
+              <div className="mt-4 pt-4 border-t border-green-200">
+                <div className="space-y-2 mb-4">
+                  {todayStats.productionSummary.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center py-1">
+                      <span className="text-green-800 font-medium">{item.product}</span>
+                      <span className="text-green-700 font-bold">{item.totalQuantity.toFixed(1)} {item.unit}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    printProductionList();
+                  }}
+                  className="w-full py-2 bg-green-600 text-white rounded-bread font-medium flex items-center justify-center gap-2"
+                >
+                  <Printer size={18} />
+                  Stampa Lista Produzione
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Today's Orders Alert */}
       {todayStats.todayOrders > 0 && (
