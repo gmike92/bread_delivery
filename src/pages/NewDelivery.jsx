@@ -44,6 +44,9 @@ const NewDelivery = () => {
   
   // Extra items can be added
   const [extraItems, setExtraItems] = useState([]);
+  
+  // Customer-specific products
+  const [customerProducts, setCustomerProducts] = useState([]);
 
   const [formData, setFormData] = useState({
     customerId: '',
@@ -267,7 +270,18 @@ const NewDelivery = () => {
           </label>
           <select
             value={formData.customerId}
-            onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+            onChange={(e) => {
+              const customerId = e.target.value;
+              setFormData({ ...formData, customerId });
+              
+              // Load customer-specific products
+              const customer = customers.find(c => c.id === customerId);
+              if (customer?.customProducts && customer.customProducts.length > 0) {
+                setCustomerProducts(customer.customProducts);
+              } else {
+                setCustomerProducts([]);
+              }
+            }}
             className="select-field"
             required
           >
@@ -275,6 +289,7 @@ const NewDelivery = () => {
             {customers.map(customer => (
               <option key={customer.id} value={customer.id}>
                 {customer.name}
+                {customer.customProducts?.length > 0 && ' ★'}
               </option>
             ))}
           </select>
@@ -395,6 +410,63 @@ const NewDelivery = () => {
             })}
           </div>
         </div>
+
+        {/* Customer-Specific Products */}
+        {customerProducts.length > 0 && (
+          <div className="animate-slide-up stagger-4 mb-6">
+            <label className="label flex items-center gap-2">
+              <Package className="text-purple-600" size={18} />
+              <span className="text-purple-700">Prodotti Personalizzati</span>
+              <span className="text-xs text-purple-500">(solo per questo cliente)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {customerProducts.map((product, index) => {
+                const itemIndex = defaultItems.length + index;
+                const existingExtra = extraItems.find(e => e.product === product.name);
+                const value = existingExtra?.quantity || '';
+                
+                return (
+                  <div key={`custom-${index}`} className="bg-purple-50 rounded-bread p-3 border border-purple-200">
+                    <label className="text-sm font-medium text-purple-800 mb-1 block truncate">
+                      {product.name}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={value}
+                        onChange={(e) => {
+                          const newValue = e.target.value;
+                          if (existingExtra) {
+                            // Update existing
+                            setExtraItems(extraItems.map(item =>
+                              item.product === product.name
+                                ? { ...item, quantity: newValue }
+                                : item
+                            ));
+                          } else if (newValue) {
+                            // Add new
+                            setExtraItems([...extraItems, {
+                              product: product.name,
+                              quantity: newValue,
+                              unit: product.defaultUnit || 'kg'
+                            }]);
+                          }
+                        }}
+                        placeholder="0"
+                        min="0"
+                        step="0.1"
+                        className="input-field !py-2 text-center flex-1"
+                      />
+                      <span className="text-purple-600 text-sm font-medium min-w-[2rem]">
+                        {product.defaultUnit || 'kg'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Extra Products */}
         <div className="animate-slide-up stagger-4">

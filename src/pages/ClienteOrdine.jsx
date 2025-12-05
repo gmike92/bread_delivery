@@ -243,6 +243,16 @@ const ClienteOrdine = () => {
         productsData = await seedDefaultProducts(true);
       }
       
+      // Add customer-specific products if available
+      if (linkedCustomer?.customProducts && linkedCustomer.customProducts.length > 0) {
+        const customProducts = linkedCustomer.customProducts.map((p, idx) => ({
+          ...p,
+          id: `custom-${idx}`,
+          isCustom: true // Mark as custom product
+        }));
+        productsData = [...productsData, ...customProducts];
+      }
+      
       setProducts(productsData);
     } catch (error) {
       console.error('Error loading products:', error);

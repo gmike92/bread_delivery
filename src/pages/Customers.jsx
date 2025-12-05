@@ -12,7 +12,8 @@ import {
   Save,
   Loader2,
   ChevronLeft,
-  History
+  History,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../firebase/firestore';
@@ -267,13 +268,22 @@ const Customers = () => {
                 </div>
                 <div className="flex gap-2 ml-3">
                   {isAdmin && (
-                    <button
-                      onClick={() => navigate(`/storico/${customer.id}`)}
-                      className="btn-icon !min-w-[2.75rem] !min-h-[2.75rem] !bg-blue-50 !text-blue-600"
-                      title="Storico Cliente"
-                    >
-                      <History size={18} />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => navigate(`/prodotti-cliente/${customer.id}`)}
+                        className="btn-icon !min-w-[2.75rem] !min-h-[2.75rem] !bg-purple-50 !text-purple-600"
+                        title="Prodotti Personalizzati"
+                      >
+                        <Package size={18} />
+                      </button>
+                      <button
+                        onClick={() => navigate(`/storico/${customer.id}`)}
+                        className="btn-icon !min-w-[2.75rem] !min-h-[2.75rem] !bg-blue-50 !text-blue-600"
+                        title="Storico Cliente"
+                      >
+                        <History size={18} />
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => openEditForm(customer)}

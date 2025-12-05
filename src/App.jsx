@@ -14,6 +14,7 @@ import OrdiniGiorno from './pages/OrdiniGiorno';
 import Contabilita from './pages/Contabilita';
 import OrdiniRicorrenti from './pages/OrdiniRicorrenti';
 import StoricoCliente from './pages/StoricoCliente';
+import ProdottiCliente from './pages/ProdottiCliente';
 
 function App() {
   return (
@@ -51,6 +52,7 @@ function App() {
             
             {/* Admin Only Routes */}
             <Route path="/storico/:customerId" element={<StoricoCliente />} />
+            <Route path="/prodotti-cliente/:customerId" element={<ProdottiCliente />} />
           </Route>
           
           {/* Catch all */}
