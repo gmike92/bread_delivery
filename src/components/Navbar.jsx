@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package, Euro } from 'lucide-react';
+import { Home, Users, Truck, BarChart3, Settings, ShoppingBag, Package, Euro, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
@@ -12,6 +12,7 @@ const Navbar = () => {
     navItems = [
       { to: '/', icon: Home, label: 'Home' },
       { to: '/ordine', icon: ShoppingBag, label: 'Ordina' },
+      { to: '/ricorrenti', icon: RefreshCw, label: 'Ricorrenti' },
       { to: '/settings', icon: Settings, label: 'Profilo' },
     ];
   } else if (isAdmin) {
@@ -19,9 +20,9 @@ const Navbar = () => {
     navItems = [
       { to: '/', icon: Home, label: 'Home' },
       { to: '/ordini', icon: Package, label: 'Ordini' },
+      { to: '/ricorrenti', icon: RefreshCw, label: 'Ricorrenti' },
       { to: '/delivery', icon: Truck, label: 'Consegna' },
       { to: '/contabilita', icon: Euro, label: 'Conti' },
-      { to: '/reports', icon: BarChart3, label: 'Report' },
       { to: '/settings', icon: Settings, label: 'Altro' },
     ];
   } else {
@@ -29,8 +30,8 @@ const Navbar = () => {
     navItems = [
       { to: '/', icon: Home, label: 'Home' },
       { to: '/ordini', icon: Package, label: 'Ordini' },
+      { to: '/ricorrenti', icon: RefreshCw, label: 'Ricorrenti' },
       { to: '/delivery', icon: Truck, label: 'Consegna' },
-      { to: '/reports', icon: BarChart3, label: 'Report' },
       { to: '/settings', icon: Settings, label: 'Altro' },
     ];
   }

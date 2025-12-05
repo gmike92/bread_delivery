@@ -769,3 +769,142 @@ const calculatePreviousBalance = async (customerId, beforeDate) => {
   return totalDue - totalPaid;
 };
 
+// ============ RECURRING ORDERS ============
+
+// Days of week mapping
+export const DAYS_OF_WEEK = [
+  { value: 0, label: 'Domenica', short: 'Dom' },
+  { value: 1, label: 'Lunedì', short: 'Lun' },
+  { value: 2, label: 'Martedì', short: 'Mar' },
+  { value: 3, label: 'Mercoledì', short: 'Mer' },
+  { value: 4, label: 'Giovedì', short: 'Gio' },
+  { value: 5, label: 'Venerdì', short: 'Ven' },
+  { value: 6, label: 'Sabato', short: 'Sab' }
+];
+
+// Get all recurring orders
+export const getRecurringOrders = async (customerId = null) => {
+  let q;
+  if (customerId) {
+    q = query(
+      collection(db, 'recurringOrders'),
+      where('customerId', '==', customerId)
+    );
+  } else {
+    q = query(collection(db, 'recurringOrders'));
+  }
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
+// Add a new recurring order
+export const addRecurringOrder = async (recurringOrderData) => {
+  const docRef = await addDoc(collection(db, 'recurringOrders'), {
+    ...recurringOrderData,
+    isActive: true,
+    createdAt: Timestamp.now()
+  });
+  return docRef.id;
+};
+
+// Update a recurring order
+export const updateRecurringOrder = async (id, data) => {
+  const docRef = doc(db, 'recurringOrders', id);
+  await updateDoc(docRef, {
+    ...data,
+    updatedAt: Timestamp.now()
+  });
+};
+
+// Delete a recurring order
+export const deleteRecurringOrder = async (id) => {
+  const docRef = doc(db, 'recurringOrders', id);
+  await deleteDoc(docRef);
+};
+
+// Toggle recurring order active status
+export const toggleRecurringOrder = async (id, isActive) => {
+  const docRef = doc(db, 'recurringOrders', id);
+  await updateDoc(docRef, {
+    isActive,
+    updatedAt: Timestamp.now()
+  });
+};
+
+// Generate orders from recurring templates for a specific date
+export const generateOrdersFromRecurring = async (targetDate) => {
+  const date = new Date(targetDate);
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+  
+  // Get all active recurring orders that include this day
+  const recurringOrders = await getRecurringOrders();
+  const activeRecurring = recurringOrders.filter(ro => 
+    ro.isActive && ro.days && ro.days.includes(dayOfWeek)
+  );
+  
+  // Check for existing orders on this date
+  const existingOrders = await getOrdersByDate(targetDate);
+  const existingCustomerIds = existingOrders.map(o => o.customerId);
+  
+  const generatedOrders = [];
+  
+  for (const recurring of activeRecurring) {
+    // Skip if customer already has an order for this date
+    if (existingCustomerIds.includes(recurring.customerId)) {
+      continue;
+    }
+    
+    // Create the order
+    const orderId = await addOrder({
+      customerId: recurring.customerId,
+      customerName: recurring.customerName,
+      items: recurring.items,
+      deliveryDate: targetDate,
+      notes: recurring.notes || '',
+      fromRecurring: recurring.id // Mark as generated from recurring
+    });
+    
+    generatedOrders.push({
+      id: orderId,
+      customerId: recurring.customerId,
+      customerName: recurring.customerName
+    });
+  }
+  
+  return generatedOrders;
+};
+
+// Get recurring order summary for a week
+export const getRecurringOrdersSummary = async () => {
+  const recurringOrders = await getRecurringOrders();
+  const activeOrders = recurringOrders.filter(ro => ro.isActive);
+  
+  // Group by day of week
+  const byDay = {};
+  DAYS_OF_WEEK.forEach(day => {
+    byDay[day.value] = {
+      ...day,
+      orders: [],
+      totalItems: 0
+    };
+  });
+  
+  activeOrders.forEach(ro => {
+    if (ro.days && Array.isArray(ro.days)) {
+      ro.days.forEach(day => {
+        if (byDay[day]) {
+          byDay[day].orders.push(ro);
+          const itemCount = ro.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+          byDay[day].totalItems += itemCount;
+        }
+      });
+    }
+  });
+  
+  return Object.values(byDay);
+};
+

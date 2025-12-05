@@ -12,6 +12,7 @@ import Settings from './pages/Settings';
 import ClienteOrdine from './pages/ClienteOrdine';
 import OrdiniGiorno from './pages/OrdiniGiorno';
 import Contabilita from './pages/Contabilita';
+import OrdiniRicorrenti from './pages/OrdiniRicorrenti';
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
             
             {/* Client Routes */}
             <Route path="/ordine" element={<ClienteOrdine />} />
+            <Route path="/ricorrenti" element={<OrdiniRicorrenti />} />
           </Route>
           
           {/* Catch all */}
