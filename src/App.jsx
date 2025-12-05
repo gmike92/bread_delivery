@@ -13,6 +13,7 @@ import ClienteOrdine from './pages/ClienteOrdine';
 import OrdiniGiorno from './pages/OrdiniGiorno';
 import Contabilita from './pages/Contabilita';
 import OrdiniRicorrenti from './pages/OrdiniRicorrenti';
+import StoricoCliente from './pages/StoricoCliente';
 
 function App() {
   return (
@@ -47,6 +48,9 @@ function App() {
             {/* Client Routes */}
             <Route path="/ordine" element={<ClienteOrdine />} />
             <Route path="/ricorrenti" element={<OrdiniRicorrenti />} />
+            
+            {/* Admin Only Routes */}
+            <Route path="/storico/:customerId" element={<StoricoCliente />} />
           </Route>
           
           {/* Catch all */}

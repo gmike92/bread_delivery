@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -10,11 +11,15 @@ import {
   X, 
   Save,
   Loader2,
-  ChevronLeft
+  ChevronLeft,
+  History
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { getCustomers, addCustomer, updateCustomer, deleteCustomer } from '../firebase/firestore';
 
 const Customers = () => {
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -261,6 +266,15 @@ const Customers = () => {
                   )}
                 </div>
                 <div className="flex gap-2 ml-3">
+                  {isAdmin && (
+                    <button
+                      onClick={() => navigate(`/storico/${customer.id}`)}
+                      className="btn-icon !min-w-[2.75rem] !min-h-[2.75rem] !bg-blue-50 !text-blue-600"
+                      title="Storico Cliente"
+                    >
+                      <History size={18} />
+                    </button>
+                  )}
                   <button
                     onClick={() => openEditForm(customer)}
                     className="btn-icon !min-w-[2.75rem] !min-h-[2.75rem]"
