@@ -23,6 +23,7 @@ import {
   updateProduct, 
   deleteProduct,
   seedDefaultProducts,
+  resetProductsToDefault,
   getAllUsers,
   setUserRole,
   getCustomerByEmail,
@@ -258,6 +259,22 @@ const Settings = () => {
     }
   };
 
+  const handleResetProducts = async () => {
+    if (window.confirm('⚠️ ATTENZIONE: Questo cancellerà TUTTI i prodotti esistenti e li sostituirà con quelli predefiniti:\n\n• Pane Comune\n• Pane Speciale\n• Pane di Segale\n• Segalini\n• Pizza\n• Focaccia\n\nContinuare?')) {
+      setLoading(true);
+      try {
+        await resetProductsToDefault();
+        await loadProducts();
+        alert('✅ Prodotti resettati con successo!');
+      } catch (error) {
+        console.error('Error resetting products:', error);
+        alert('Errore nel reset dei prodotti');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="page-container flex items-center justify-center min-h-screen">
@@ -388,6 +405,17 @@ const Settings = () => {
             </div>
           </div>
         )}
+
+        {/* Reset Products Button */}
+        <div className="mb-4">
+          <button
+            onClick={handleResetProducts}
+            className="w-full py-2 px-4 bg-amber-100 text-amber-700 rounded-bread font-medium flex items-center justify-center gap-2 text-sm"
+          >
+            <RefreshCw size={16} />
+            Resetta Lista Prodotti (6 prodotti standard)
+          </button>
+        </div>
 
         {/* Product List */}
         {products.length === 0 ? (

@@ -517,27 +517,43 @@ export const calculateDeliveryProgress = (orders, deliveries) => {
 
 // ============ SEED DEFAULT PRODUCTS ============
 
+export const DEFAULT_PRODUCT_LIST = [
+  { name: 'Pane Comune', defaultUnit: 'kg' },
+  { name: 'Pane Speciale', defaultUnit: 'kg' },
+  { name: 'Pane di Segale', defaultUnit: 'kg' },
+  { name: 'Segalini', defaultUnit: 'kg' },
+  { name: 'Pizza', defaultUnit: 'kg' },
+  { name: 'Focaccia', defaultUnit: 'kg' }
+];
+
 export const seedDefaultProducts = async (forceAdd = false) => {
-  const defaultProducts = [
-    { name: 'Pane Comune', defaultUnit: 'kg' },
-    { name: 'Pane Speciale', defaultUnit: 'kg' },
-    { name: 'Pane di Segale', defaultUnit: 'kg' },
-    { name: 'Segalini', defaultUnit: 'kg' },
-    { name: 'Focaccia', defaultUnit: 'kg' },
-    { name: 'Pizza', defaultUnit: 'kg' }
-  ];
-  
   const existingProducts = await getProducts();
   
   if (forceAdd || existingProducts.length === 0) {
     // Get existing product names to avoid duplicates
     const existingNames = existingProducts.map(p => p.name.toLowerCase());
     
-    for (const product of defaultProducts) {
+    for (const product of DEFAULT_PRODUCT_LIST) {
       if (!existingNames.includes(product.name.toLowerCase())) {
         await addProduct(product);
       }
     }
+  }
+  
+  return await getProducts();
+};
+
+// Reset products to default list (delete all and recreate)
+export const resetProductsToDefault = async () => {
+  // Delete all existing products
+  const existingProducts = await getProducts();
+  for (const product of existingProducts) {
+    await deleteProduct(product.id);
+  }
+  
+  // Add default products
+  for (const product of DEFAULT_PRODUCT_LIST) {
+    await addProduct(product);
   }
   
   return await getProducts();
